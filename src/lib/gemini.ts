@@ -142,6 +142,7 @@ Extract every question in the exact order they are printed.
 Rules:
 - If a question has labelled sub-parts (e.g. "11(a)", "11(b)", "2.i", "2.ii"), treat EACH sub-part as its own separate entry. Do not merge sub-parts into one entry.
 - Preserve the original numbering/label exactly as printed on the page (including whatever punctuation/format the paper uses).
+- Some papers print questions as a titled list (project briefs, prompts) with no visible number at all. In that case, "number" must still be a plain sequential number reflecting its position in the printed order — "1" for the first, "2" for the second, and so on. Never leave "number" blank — a student answering this paper will refer to each item by its position (1st, 2nd, 3rd...) even if the paper itself doesn't print a digit.
 - "text" is the full question text (excluding the number label itself).
 - "page" is the 0-based index of the page image the question appears on.
 - Return questions in the same order they are printed, top to bottom, page by page.`,
@@ -157,7 +158,14 @@ Rules:
   }));
 
   const parsed = parseJson<{ questions: ExtractedQuestion[] }>(response.text);
-  return parsed.questions;
+  // Safety net: a question with no usable number can never be matched (an
+  // empty/blank label normalizes to null and gets filtered out of the known
+  // set entirely), so fall back to its printed position rather than ever
+  // shipping a question nothing can attach an answer to.
+  return parsed.questions.map((q, i) => ({
+    ...q,
+    number: q.number?.trim() ? q.number : String(i + 1),
+  }));
 }
 
 export async function extractAnswers(

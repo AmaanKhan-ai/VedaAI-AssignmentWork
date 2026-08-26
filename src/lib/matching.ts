@@ -17,16 +17,18 @@ export function normalizeLabel(raw: string | null | undefined): string | null {
   return cleaned || null;
 }
 
-// A long handwritten answer is often split by the model into several
-// fragments (one per paragraph/sub-heading), but the student only writes the
-// question number once, at the top of the answer. Every later fragment for
-// that same answer comes back with questionNumber: null. Sorting fragments
-// into reading order and letting a null fragment inherit the most recent
-// explicitly-labeled question (rather than treating it as unmatched) is what
-// makes multi-paragraph answers map correctly. This is decided
-// deterministically here rather than trusted to the model, since repeated
-// runs on the same document showed the model's own continuity tracking is
-// inconsistent across calls.
+// A long handwritten answer is usually split by the model into several
+// fragments (one per paragraph/sub-heading), and the student only writes the
+// question number once, at the top of the answer. Rather than trust the
+// model to remember and repeat that label across many later fragments
+// (observed to be inconsistent across repeated runs on the same document),
+// each fragment instead reports a simple, local judgment —
+// "continuesFromAbove" — and this function does the actual linking
+// deterministically, in reading order. A fragment only joins the question in
+// progress if the model explicitly said it continues it; anything else
+// (an unrecognized label, or continuesFromAbove: false with no label) is
+// genuinely unmatched, and resets what "in progress" means so it doesn't
+// bleed into whatever question happens to follow it.
 function sortReadingOrder(
   a: ExtractedAnswerFragment,
   b: ExtractedAnswerFragment
@@ -60,16 +62,19 @@ export function mapAnswersToQuestions(
       const list = byKey.get(currentKey) ?? [];
       list.push(answer);
       byKey.set(currentKey, list);
-    } else if (!answer.questionNumber && currentKey) {
-      // No label at all — a continuation of whatever question is in progress.
+    } else if (!rawKey && answer.continuesFromAbove && currentKey) {
+      // No label of its own, but explicitly marked as continuing what's
+      // already in progress.
       const list = byKey.get(currentKey) ?? [];
       list.push(answer);
       byKey.set(currentKey, list);
     } else {
-      // Either an explicit label that doesn't match any real question, or a
-      // null-labeled fragment with no question in progress yet (preamble) —
-      // both are genuinely unmatched, not silently absorbed.
+      // An explicit label that matches no real question, or content that
+      // isn't a continuation of anything in progress — genuinely unmatched.
+      // Reset currentKey so a later "continuesFromAbove" fragment attaches
+      // to THIS unmatched section rather than an unrelated earlier question.
       unmatchedAnswers.push(answer);
+      currentKey = null;
     }
   }
 

@@ -77,6 +77,7 @@ const ANSWER_SCHEMA = {
         type: Type.OBJECT,
         properties: {
           questionNumber: { type: Type.STRING, nullable: true },
+          continuesFromAbove: { type: Type.BOOLEAN },
           transcript: { type: Type.STRING },
           page: { type: Type.INTEGER },
           box: {
@@ -86,7 +87,7 @@ const ANSWER_SCHEMA = {
             maxItems: 4,
           },
         },
-        required: ["transcript", "page", "box"],
+        required: ["continuesFromAbove", "transcript", "page", "box"],
       },
     },
   },
@@ -168,18 +169,19 @@ export async function extractAnswers(
           {
             text: `You are analyzing a student's HANDWRITTEN answer sheet spanning ${pages.length} page image(s), given below in order labelled "Page N:".
 
-For every distinct answer segment you can identify, extract one entry with:
-- "questionNumber": the question number/label the student wrote next to that answer, in the same form they wrote it (e.g. "11 a)"). If you cannot determine which question it answers, set this to null. Do not force a match if it's genuinely unclear.
+Break the content into segments in reading order (top to bottom, page by page) and extract one entry per segment with:
+- "questionNumber": the question number/label written directly on THIS segment (e.g. "11 a)"), exactly as the student wrote it. Only set this if a label is actually visible on this specific segment — set it to null otherwise. Do NOT try to recall or repeat a label from an earlier segment; that's handled separately by "continuesFromAbove".
+- "continuesFromAbove": true if this segment is a direct continuation of whatever content immediately precedes it in reading order — e.g. it's the next paragraph, sub-heading (like "a)", "b)"), or example within the same answer, just without its own repeated label. Set this to false if this segment starts something new: the start of a different answer, or content that is genuinely disconnected from the answer in progress (a stray note, a crossed-out draft, an aside that doesn't belong to any answer).
 - "transcript": your best transcription of the handwritten content. If it's a diagram, chemical equation, or drawing rather than prose, briefly describe it instead of transcribing nonsense.
 - "page": the 0-based index of the page image this segment is on.
-- "box": a tight bounding box [yMin, xMin, yMax, xMax] around exactly that answer's region on that page image, normalized to a 0-1000 scale (0,0 = top-left, 1000,1000 = bottom-right).
+- "box": a tight bounding box [yMin, xMin, yMax, xMax] around exactly that segment's region on that page image, normalized to a 0-1000 scale (0,0 = top-left, 1000,1000 = bottom-right).
 
 Rules:
 - Students may answer questions out of order — extract in the order they actually appear on the page, not assumed numeric order.
 - Do NOT invent an entry for a question the student never answered.
-- Long-form answers are usually written as several paragraphs, sub-headings (e.g. "a)", "b)"), or examples in a row, but they are still ONE answer to ONE question — the student typically writes the question number only ONCE, at the very start of the answer. Every later paragraph, sub-heading, or example that follows it — even on a later page — belongs to that SAME question. Set "questionNumber" on those later segments to the SAME value as the segment that started the answer; do NOT set it to null just because that specific paragraph doesn't repeat the number.
-- If a single answer's handwriting continues onto another page/region, output a SEPARATE entry per region, all sharing the same questionNumber, each with its own box on its own page.
-- Only use questionNumber: null for content that is genuinely disconnected from any answer in progress — e.g. a stray note before the first answer, or a crossed-out fragment with no clear question context.`,
+- A long answer is usually written as several paragraphs, sub-headings, or examples in a row, but it's still ONE answer — the student typically writes the question number only once, at the very start. Every later segment of that same answer should have questionNumber: null and continuesFromAbove: true, not a repeated/guessed label.
+- If a single answer's handwriting continues onto another page/region, output a SEPARATE entry per region, in reading order, each with continuesFromAbove: true and its own box.
+- Reserve continuesFromAbove: false + questionNumber: null for segments that genuinely don't belong to the answer in progress — be conservative about this; most unlabeled segments in a flowing essay answer ARE continuations, not disconnected content.`,
           },
           ...pageParts(pages),
         ],
@@ -226,9 +228,17 @@ export async function gradeAnswers(
         role: "user",
         parts: [
           {
-            text: `You are grading exam answers. For each question+answer pair below, grade out of 5 marks based on correctness and completeness relative to the question asked.
+            text: `You are a strict university examiner grading exam answers out of 5 marks each. Grade rigorously — this is meant to discriminate between weak, average, and genuinely strong answers, not to reward effort or length on its own.
 
-Return, per pair: "number" (echo the question number back exactly), "score" (0-5, can be a whole or half number), "maxScore" (always 5), "correct" (true if score >= 3), and "feedback" (one or two sentences, specific and constructive, addressed to the student).
+For each question+answer pair, first work out mentally what a complete, correct answer would need to include (key terms/definitions, the specific mechanism or reasoning asked for, correct technical details such as formulas/classifications/examples where relevant, and any sub-parts the question has). Then grade the student's actual answer against that:
+- 5/5: complete and precise — covers essentially everything expected, uses correct terminology, no notable gaps or inaccuracies.
+- 3-4/5: substantially correct but has a real gap — missing a specific sub-point, a definition that's vague rather than precise, an example that's generic/unexplained, a minor inaccuracy, or incomplete coverage of a multi-part question.
+- 1-2/5: attempts the question but is largely superficial, mostly restates the question without real content, has significant inaccuracies, or covers only a small fraction of what was asked.
+- 0/5: no genuine attempt, or answers a different question entirely.
+
+Do not default to 5/5. A generic-but-not-wrong answer, an answer missing specific examples/details it should have included, or an answer that only partially addresses a multi-part question should NOT score 5/5 — be specific in the feedback about exactly what's missing or imprecise, not just that it's "thorough."
+
+Return, per pair: "number" (echo the question number back exactly), "score" (0-5, can be a whole or half number), "maxScore" (always 5), "correct" (true if score >= 3), and "feedback" (one or two sentences, specific about what's missing or wrong, not generic praise).
 
 Pairs (JSON):
 ${JSON.stringify(pairs, null, 2)}`,

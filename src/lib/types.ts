@@ -8,7 +8,8 @@ export interface ExtractedQuestion {
 }
 
 export interface ExtractedAnswerFragment {
-  questionNumber: string | null; // best-guess label the student wrote, or null if unclear
+  questionNumber: string | null; // the label visible on THIS fragment, or null if none is written on it
+  continuesFromAbove: boolean; // true if this directly continues the content immediately before it in reading order
   transcript: string;
   page: number; // index into answer sheet pages
   box: Box;

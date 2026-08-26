@@ -4,10 +4,14 @@ import { useState } from "react";
 import { UploadScreen } from "@/components/UploadScreen";
 import { ExtractingScreen } from "@/components/ExtractingScreen";
 import { ReviewScreen } from "@/components/ReviewScreen";
+import { Sidebar } from "@/components/Sidebar";
+import { TopBar } from "@/components/TopBar";
 import { fileToPageImages } from "@/lib/pdf";
 import type { ExtractionResult } from "@/lib/types";
 
 type Stage = "upload" | "extracting" | "review";
+
+const USER_NAME = "Mohammed Amaan Khan";
 
 export default function Home() {
   const [stage, setStage] = useState<Stage>("upload");
@@ -62,39 +66,35 @@ export default function Home() {
     setErrorMessage(null);
   }
 
+  if (stage === "extracting") {
+    return <ExtractingScreen note={note} />;
+  }
+
   return (
-    <div className="min-h-screen bg-neutral-50">
-      <header className="flex h-14 items-center justify-between border-b border-neutral-200 bg-neutral-950 px-6">
-        <span className="text-sm font-semibold tracking-tight text-white">
-          VedaAI
-        </span>
-        {stage === "review" && (
-          <button
-            type="button"
-            onClick={handleReset}
-            className="rounded-md border border-white/15 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10"
-          >
-            New upload
-          </button>
-        )}
-      </header>
-
-      {stage === "upload" && (
-        <UploadScreen
-          questionFile={questionFile}
-          answerFile={answerFile}
-          onQuestionFile={setQuestionFile}
-          onAnswerFile={setAnswerFile}
-          onContinue={handleContinue}
-          gradeEnabled={gradeEnabled}
-          onGradeEnabledChange={setGradeEnabled}
-          errorMessage={errorMessage}
+    <div className="flex h-screen overflow-hidden bg-background">
+      <Sidebar userName={USER_NAME} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TopBar
+          title="Assignments"
+          userName={USER_NAME}
+          onBack={stage === "review" ? handleReset : undefined}
         />
-      )}
-
-      {stage === "extracting" && <ExtractingScreen note={note} />}
-
-      {stage === "review" && result && <ReviewScreen result={result} />}
+        <div className="flex-1 overflow-y-auto">
+          {stage === "upload" && (
+            <UploadScreen
+              questionFile={questionFile}
+              answerFile={answerFile}
+              onQuestionFile={setQuestionFile}
+              onAnswerFile={setAnswerFile}
+              onContinue={handleContinue}
+              gradeEnabled={gradeEnabled}
+              onGradeEnabledChange={setGradeEnabled}
+              errorMessage={errorMessage}
+            />
+          )}
+          {stage === "review" && result && <ReviewScreen result={result} />}
+        </div>
+      </div>
     </div>
   );
 }

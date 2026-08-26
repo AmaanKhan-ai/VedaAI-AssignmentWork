@@ -14,7 +14,7 @@ function StatusIcon({ q }: { q: MappedQuestion }) {
     );
   }
   return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-[9px] font-medium text-white">
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[9px] font-medium text-white">
       A
     </span>
   );
@@ -33,29 +33,27 @@ function QuestionRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-        selected ? "bg-neutral-900 text-white" : "hover:bg-neutral-100"
+      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+        selected
+          ? "border-accent/30 bg-accent-tint"
+          : "border-transparent hover:bg-neutral-50"
       }`}
     >
       <StatusIcon q={q} />
       <span className="flex-1 min-w-0">
         <span
           className={`block text-xs font-mono ${
-            selected ? "text-neutral-300" : "text-neutral-400"
+            selected ? "text-accent" : "text-neutral-400"
           }`}
         >
           Q{q.number}
         </span>
-        <span className="block truncate text-sm">{q.text}</span>
+        <span className="block truncate text-sm text-neutral-800">{q.text}</span>
       </span>
       {q.grade && (
         <span
-          className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-mono ${
-            selected
-              ? "bg-white/10 text-white"
-              : q.grade.correct
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-rose-50 text-rose-700"
+          className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-mono font-medium ${
+            q.grade.correct ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
           }`}
         >
           {q.grade.score}/{q.grade.maxScore}
@@ -92,14 +90,14 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
     selected?.fragments.filter((f) => f.page === currentPage) ?? [];
 
   return (
-    <div className="flex min-h-[calc(100vh-56px)] flex-col">
+    <div className="flex min-h-full flex-col">
       {result.summary && (
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-white px-6 py-3">
+        <div className="flex items-center justify-between border-b border-neutral-200/70 bg-white px-6 py-3">
           <span className="text-sm text-neutral-500">
             {result.summary.answered} of {result.summary.totalQuestions} answered
             &middot; {result.summary.unanswered} unanswered
           </span>
-          <span className="rounded-full bg-neutral-900 px-3 py-1 text-sm font-mono text-white">
+          <span className="rounded-full bg-accent px-3 py-1 text-sm font-mono font-medium text-white">
             {result.summary.totalScore} / {result.summary.maxScore}
           </span>
         </div>
@@ -107,7 +105,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
 
       <div className="grid flex-1 grid-cols-1 gap-0 lg:grid-cols-[360px_1fr]">
         {/* Question list */}
-        <div className="border-b border-neutral-200 bg-neutral-50/60 p-4 lg:border-b-0 lg:border-r">
+        <div className="border-b border-neutral-200/70 bg-white p-4 lg:border-b-0 lg:border-r">
           <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-neutral-400">
             Questions
           </p>
@@ -164,7 +162,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
             </div>
           )}
 
-          <div className="relative flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
+          <div className="relative flex-1 overflow-hidden rounded-xl border border-neutral-200/70 bg-white">
             {result.answerPages.length > 0 ? (
               <div className="relative mx-auto w-full max-w-2xl">
                 <img
@@ -204,7 +202,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
                   onClick={() => setCurrentPage(i)}
                   className={`h-2.5 w-2.5 rounded-full transition-colors ${
                     i === currentPage
-                      ? "bg-neutral-900"
+                      ? "bg-accent"
                       : fragmentPages.includes(i)
                       ? "bg-emerald-400"
                       : "bg-neutral-300"

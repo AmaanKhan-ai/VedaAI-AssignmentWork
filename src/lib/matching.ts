@@ -7,13 +7,18 @@ import type {
 import type { GradeOutput } from "./gemini";
 
 // Normalizes a printed/handwritten question label so "11(a)", "11 a)", "Q.11a",
-// and "11-a" all collapse to the same key: "11a".
+// "11-a", and "Assignment 11(a)" all collapse to the same key: "11a". Rather
+// than maintaining a list of label words to strip ("Q", "Assignment",
+// "Question", "Problem", ...), which a real question paper's numbering
+// style can vary on, this drops everything before the first digit — the
+// numeral is what a student actually repeats in their own handwriting, the
+// word in front of it (however the paper phrases it) generally isn't.
 export function normalizeLabel(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  const cleaned = raw
-    .toLowerCase()
-    .replace(/^q\.?\s*/i, "")
-    .replace(/[().\-\s]/g, "");
+  const lower = raw.toLowerCase();
+  const digitIndex = lower.search(/[0-9]/);
+  const fromNumber = digitIndex >= 0 ? lower.slice(digitIndex) : lower;
+  const cleaned = fromNumber.replace(/[().\-:\s]/g, "");
   return cleaned || null;
 }
 

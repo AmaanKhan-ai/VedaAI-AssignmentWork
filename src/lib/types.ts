@@ -1,3 +1,8 @@
+// Every question is graded out of this many marks — shared between the
+// grading prompt (gemini.ts) and the overall-score calculation (route.ts)
+// so the two can't drift out of sync.
+export const MARKS_PER_QUESTION = 5;
+
 // Normalized bounding box, values 0-1000 (Gemini's native grounding coordinate space).
 export type Box = [number, number, number, number]; // [yMin, xMin, yMax, xMax]
 

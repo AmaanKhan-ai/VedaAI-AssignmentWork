@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractAnswers, extractQuestions, gradeAnswers } from "@/lib/gemini";
 import { applyGrades, mapAnswersToQuestions } from "@/lib/matching";
-import type { ExtractionResult } from "@/lib/types";
+import { MARKS_PER_QUESTION, type ExtractionResult } from "@/lib/types";
 
 export const maxDuration = 60;
 
@@ -60,14 +60,14 @@ export async function POST(req: NextRequest) {
       const grades = await gradeAnswers(answeredPairs);
       finalQuestions = applyGrades(mapped, grades);
 
+      // Every question is worth MARKS_PER_QUESTION regardless of whether it
+      // was answered — an unanswered question counts as 0 toward the total,
+      // not as excluded from it, same as a real exam's full mark scheme.
       const totalScore = finalQuestions.reduce(
         (sum, q) => sum + (q.grade?.score ?? 0),
         0
       );
-      const maxScore = finalQuestions.reduce(
-        (sum, q) => sum + (q.grade?.maxScore ?? (q.status === "answered" ? 5 : 0)),
-        0
-      );
+      const maxScore = finalQuestions.length * MARKS_PER_QUESTION;
       summary = {
         totalQuestions: finalQuestions.length,
         answered: finalQuestions.filter((q) => q.status === "answered").length,

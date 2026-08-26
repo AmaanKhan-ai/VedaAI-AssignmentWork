@@ -1,5 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import type { ExtractedAnswerFragment, ExtractedQuestion } from "./types";
+import {
+  MARKS_PER_QUESTION,
+  type ExtractedAnswerFragment,
+  type ExtractedQuestion,
+} from "./types";
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
@@ -228,7 +232,7 @@ export async function gradeAnswers(
         role: "user",
         parts: [
           {
-            text: `You are a strict university examiner grading exam answers out of 5 marks each. Grade rigorously — this is meant to discriminate between weak, average, and genuinely strong answers, not to reward effort or length on its own.
+            text: `You are a strict university examiner grading exam answers out of ${MARKS_PER_QUESTION} marks each. Grade rigorously — this is meant to discriminate between weak, average, and genuinely strong answers, not to reward effort or length on its own.
 
 For each question+answer pair, first work out mentally what a complete, correct answer would need to include (key terms/definitions, the specific mechanism or reasoning asked for, correct technical details such as formulas/classifications/examples where relevant, and any sub-parts the question has). Then grade the student's actual answer against that:
 - 5/5: complete and precise — covers essentially everything expected, uses correct terminology, no notable gaps or inaccuracies.
@@ -238,7 +242,7 @@ For each question+answer pair, first work out mentally what a complete, correct 
 
 Do not default to 5/5. A generic-but-not-wrong answer, an answer missing specific examples/details it should have included, or an answer that only partially addresses a multi-part question should NOT score 5/5 — be specific in the feedback about exactly what's missing or imprecise, not just that it's "thorough."
 
-Return, per pair: "number" (echo the question number back exactly), "score" (0-5, can be a whole or half number), "maxScore" (always 5), "correct" (true if score >= 3), and "feedback" (one or two sentences, specific about what's missing or wrong, not generic praise).
+Return, per pair: "number" (echo the question number back exactly), "score" (0-${MARKS_PER_QUESTION}, can be a whole or half number), "maxScore" (always ${MARKS_PER_QUESTION}), "correct" (true if score >= ${MARKS_PER_QUESTION * 0.6}), and "feedback" (one or two sentences, specific about what's missing or wrong, not generic praise).
 
 Pairs (JSON):
 ${JSON.stringify(pairs, null, 2)}`,

@@ -30,10 +30,15 @@ Grading/Feedback.
    knowledge of the image's real pixel dimensions).
 4. **Mapping** (`src/lib/matching.ts`) — question labels from both sides
    are normalized (`"11 (a)"`, `"Q.11a"`, `"11-a"` → `"11a"`) and joined.
-   Unmatched answer fragments (label didn't match any real question, or
-   was `null`) are bucketed separately and surfaced in the UI rather than
-   silently dropped. Questions with no matched fragment are marked
-   unanswered. A question's fragments can span multiple pages.
+   Fragments are sorted into reading order (page, then vertical position)
+   and an unlabeled fragment inherits whatever question the most recent
+   *explicitly*-labeled fragment belongs to — this is what makes
+   multi-paragraph essay answers (intro + several sub-headed sections) map
+   correctly, since a student typically only writes the question number
+   once, at the top of the answer. Only content with no question in
+   progress yet, or an explicit label that matches no real question, is
+   surfaced as genuinely unmatched. Questions with no matched fragment are
+   marked unanswered.
 5. **Grading (optional)** — if enabled, one batched Gemini call grades
    every answered question out of 5 and returns short feedback text.
 
@@ -78,3 +83,13 @@ Get a free Gemini API key at <https://aistudio.google.com/>.
   extraction, by design (no DB required).
 - **Single answer sheet, single student** per the assignment's stated
   scope — not built for batch/roster grading.
+- **Free-tier Gemini quota is low.** In testing, `gemini-2.5-flash`'s free
+  tier hit a hard **20 requests/day** cap (`generate_content_free_tier_requests`,
+  per Google's own error response), and each full run of the app costs 2–3
+  requests (question extraction, answer extraction, optional grading). That's
+  roughly 6–10 full runs/day per API key before every request starts
+  returning HTTP 429. The app surfaces this as a plain error message rather
+  than crashing, and retries transient failures automatically, but it cannot
+  work around a genuinely exhausted daily quota. If repeated grading runs are
+  expected, use a key with billing enabled (Gemini's paid tier quota is far
+  higher) rather than a bare free-tier key.

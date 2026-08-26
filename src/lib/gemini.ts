@@ -10,7 +10,30 @@ function client() {
       "GEMINI_API_KEY is not set. Add it to .env.local (see .env.local.example)."
     );
   }
+  // The SDK's ambient credential resolution prefers GOOGLE_API_KEY over an
+  // explicitly-passed apiKey if one happens to be set in the environment
+  // (e.g. from an unrelated gcloud/tool setup on the host machine). Clear it
+  // for this process so the key configured for this project is always the
+  // one actually used.
+  if (process.env.GOOGLE_API_KEY && process.env.GOOGLE_API_KEY !== apiKey) {
+    delete process.env.GOOGLE_API_KEY;
+  }
   return new GoogleGenAI({ apiKey });
+}
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
 }
 
 function inlineDataFromDataUrl(dataUrl: string) {
@@ -100,7 +123,7 @@ export async function extractQuestions(
   pages: string[]
 ): Promise<ExtractedQuestion[]> {
   const ai = client();
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: MODEL,
     contents: [
       {
@@ -126,7 +149,7 @@ Rules:
       responseMimeType: "application/json",
       responseSchema: QUESTION_SCHEMA,
     },
-  });
+  }));
 
   const parsed = parseJson<{ questions: ExtractedQuestion[] }>(response.text);
   return parsed.questions;
@@ -136,7 +159,7 @@ export async function extractAnswers(
   pages: string[]
 ): Promise<ExtractedAnswerFragment[]> {
   const ai = client();
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: MODEL,
     contents: [
       {
@@ -154,8 +177,9 @@ For every distinct answer segment you can identify, extract one entry with:
 Rules:
 - Students may answer questions out of order — extract in the order they actually appear on the page, not assumed numeric order.
 - Do NOT invent an entry for a question the student never answered.
+- Long-form answers are usually written as several paragraphs, sub-headings (e.g. "a)", "b)"), or examples in a row, but they are still ONE answer to ONE question — the student typically writes the question number only ONCE, at the very start of the answer. Every later paragraph, sub-heading, or example that follows it — even on a later page — belongs to that SAME question. Set "questionNumber" on those later segments to the SAME value as the segment that started the answer; do NOT set it to null just because that specific paragraph doesn't repeat the number.
 - If a single answer's handwriting continues onto another page/region, output a SEPARATE entry per region, all sharing the same questionNumber, each with its own box on its own page.
-- If content clearly doesn't correspond to any real question (stray notes, crossed-out work, a rough sketch), still include it with questionNumber set to null.`,
+- Only use questionNumber: null for content that is genuinely disconnected from any answer in progress — e.g. a stray note before the first answer, or a crossed-out fragment with no clear question context.`,
           },
           ...pageParts(pages),
         ],
@@ -165,7 +189,7 @@ Rules:
       responseMimeType: "application/json",
       responseSchema: ANSWER_SCHEMA,
     },
-  });
+  }));
 
   const parsed = parseJson<{ answers: ExtractedAnswerFragment[] }>(
     response.text
@@ -195,7 +219,7 @@ export async function gradeAnswers(
 ): Promise<GradeOutput[]> {
   if (pairs.length === 0) return [];
   const ai = client();
-  const response = await ai.models.generateContent({
+  const response = await withRetry(() => ai.models.generateContent({
     model: MODEL,
     contents: [
       {
@@ -216,7 +240,7 @@ ${JSON.stringify(pairs, null, 2)}`,
       responseMimeType: "application/json",
       responseSchema: GRADE_SCHEMA,
     },
-  });
+  }));
 
   const parsed = parseJson<{ grades: GradeOutput[] }>(response.text);
   return parsed.grades;

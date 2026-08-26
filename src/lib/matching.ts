@@ -17,6 +17,24 @@ export function normalizeLabel(raw: string | null | undefined): string | null {
   return cleaned || null;
 }
 
+// A long handwritten answer is often split by the model into several
+// fragments (one per paragraph/sub-heading), but the student only writes the
+// question number once, at the top of the answer. Every later fragment for
+// that same answer comes back with questionNumber: null. Sorting fragments
+// into reading order and letting a null fragment inherit the most recent
+// explicitly-labeled question (rather than treating it as unmatched) is what
+// makes multi-paragraph answers map correctly. This is decided
+// deterministically here rather than trusted to the model, since repeated
+// runs on the same document showed the model's own continuity tracking is
+// inconsistent across calls.
+function sortReadingOrder(
+  a: ExtractedAnswerFragment,
+  b: ExtractedAnswerFragment
+): number {
+  if (a.page !== b.page) return a.page - b.page;
+  return a.box[0] - b.box[0]; // yMin
+}
+
 export function mapAnswersToQuestions(
   questions: ExtractedQuestion[],
   answers: ExtractedAnswerFragment[]
@@ -30,13 +48,27 @@ export function mapAnswersToQuestions(
     questions.map((q) => normalizeLabel(q.number)).filter(Boolean) as string[]
   );
 
-  for (const answer of answers) {
-    const key = normalizeLabel(answer.questionNumber);
-    if (key && knownKeys.has(key)) {
-      const list = byKey.get(key) ?? [];
+  const ordered = [...answers].sort(sortReadingOrder);
+  let currentKey: string | null = null;
+
+  for (const answer of ordered) {
+    const rawKey = normalizeLabel(answer.questionNumber);
+
+    if (rawKey && knownKeys.has(rawKey)) {
+      // Explicit, recognized label — start (or continue) this question.
+      currentKey = rawKey;
+      const list = byKey.get(currentKey) ?? [];
       list.push(answer);
-      byKey.set(key, list);
+      byKey.set(currentKey, list);
+    } else if (!answer.questionNumber && currentKey) {
+      // No label at all — a continuation of whatever question is in progress.
+      const list = byKey.get(currentKey) ?? [];
+      list.push(answer);
+      byKey.set(currentKey, list);
     } else {
+      // Either an explicit label that doesn't match any real question, or a
+      // null-labeled fragment with no question in progress yet (preamble) —
+      // both are genuinely unmatched, not silently absorbed.
       unmatchedAnswers.push(answer);
     }
   }

@@ -44,7 +44,7 @@ Grading/Feedback.
 
 ## AI model / API used
 
-Google **Gemini** (`gemini-2.5-flash` by default, via `@google/genai`),
+Google **Gemini** (`gemini-3.6-flash` by default, via `@google/genai`),
 chosen specifically because its structured-output + bounding-box grounding
 support directly matches the "highlight the exact answer region"
 requirement — no separate OCR or object-detection step needed. Swap the
@@ -68,11 +68,12 @@ Get a free Gemini API key at <https://aistudio.google.com/>.
 
 ## Assumptions & limitations
 
-- **Matching is label-based, not spatial/semantic.** If a student writes no
-  question number at all next to an answer, it lands in "unmatched"
-  rather than being guessed into place — this favors precision over
-  recall per the assignment's edge-case requirements ("answers that don't
-  match any question").
+- **Matching is label + reading-order based, not spatial/semantic.** A
+  fragment either carries an explicit label matching a real question, or is
+  explicitly marked by the model as continuing the fragment directly before
+  it (`continuesFromAbove`) — content that is neither is left in
+  "unmatched" rather than guessed into place, per the assignment's
+  edge-case requirements ("answers that don't match any question").
 - **Grading rubric is a flat 0–5 per question**, since no answer key /
   mark scheme was provided in the assignment brief. `correct` is a
   simple `score >= 3` threshold.
@@ -85,8 +86,10 @@ Get a free Gemini API key at <https://aistudio.google.com/>.
   scope — not built for batch/roster grading.
 - **Free-tier Gemini quota is low.** In testing, `gemini-2.5-flash`'s free
   tier hit a hard **20 requests/day** cap (`generate_content_free_tier_requests`,
-  per Google's own error response), and each full run of the app costs 2–3
-  requests (question extraction, answer extraction, optional grading). That's
+  per Google's own error response) — that model has since been retired for
+  new accounts in favor of `gemini-3.6-flash` (now the default), and each
+  full run of the app costs 2–3 requests (question extraction, answer
+  extraction, optional grading). That's
   roughly 6–10 full runs/day per API key before every request starts
   returning HTTP 429. The app surfaces this as a plain error message rather
   than crashing, and retries transient failures automatically, but it cannot

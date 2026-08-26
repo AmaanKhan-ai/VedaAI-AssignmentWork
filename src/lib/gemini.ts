@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { ExtractedAnswerFragment, ExtractedQuestion } from "./types";
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
 function client() {
   const apiKey = process.env.GEMINI_API_KEY;

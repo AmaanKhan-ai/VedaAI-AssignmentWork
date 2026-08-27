@@ -29,16 +29,18 @@ Grading/Feedback.
    space — this is what drives the highlight overlay, and needs no
    knowledge of the image's real pixel dimensions).
 4. **Mapping** (`src/lib/matching.ts`) — question labels from both sides
-   are normalized (`"11 (a)"`, `"Q.11a"`, `"11-a"` → `"11a"`) and joined.
-   Fragments are sorted into reading order (page, then vertical position)
-   and an unlabeled fragment inherits whatever question the most recent
-   *explicitly*-labeled fragment belongs to — this is what makes
-   multi-paragraph essay answers (intro + several sub-headed sections) map
-   correctly, since a student typically only writes the question number
-   once, at the top of the answer. Only content with no question in
-   progress yet, or an explicit label that matches no real question, is
-   surfaced as genuinely unmatched. Questions with no matched fragment are
-   marked unanswered.
+   are normalized (`"11 (a)"`, `"Q.11a"`, `"Assignment 1:"` → `"11a"` /
+   `"1"`, dropping everything before the first digit) and joined. Fragments
+   are sorted into reading order (page, then vertical position); an
+   unlabeled fragment defaults to joining whichever question is currently
+   "in progress," since a student typically only writes the question
+   number once at the top of an answer, and later paragraphs, examples, or
+   lettered sub-headings within that same answer usually don't repeat it.
+   The model is only asked the narrower, more reliable question "is this
+   clearly a personal note/aside, not an exam answer at all"
+   (`isStrayNote`) — that content is set aside as unmatched, along with any
+   explicit label that matches no real question. Questions with no matched
+   fragment are marked unanswered.
 5. **Grading (optional)** — if enabled, one batched Gemini call grades
    every answered question out of 5 and returns short feedback text.
 
@@ -68,12 +70,16 @@ Get a free Gemini API key at <https://aistudio.google.com/>.
 
 ## Assumptions & limitations
 
-- **Matching is label + reading-order based, not spatial/semantic.** A
-  fragment either carries an explicit label matching a real question, or is
-  explicitly marked by the model as continuing the fragment directly before
-  it (`continuesFromAbove`) — content that is neither is left in
-  "unmatched" rather than guessed into place, per the assignment's
-  edge-case requirements ("answers that don't match any question").
+- **Matching is label + reading-order based, not spatial/semantic**, and
+  defaults an unlabeled fragment to the question currently in progress
+  rather than requiring it to be explicitly re-confirmed — chosen after
+  testing showed the reverse (requiring an affirmative "yes, continues")
+  unreliably dropped real content whenever a single answer used its own
+  visually-distinct sub-headings. Content is only left "unmatched" if it's
+  explicitly labelled with a number that matches no real question, or the
+  model is confident it's a stray aside unrelated to any answer
+  (`isStrayNote`), per the assignment's edge-case requirement ("answers
+  that don't match any question").
 - **Grading rubric is a flat 0–5 per question**, since no answer key /
   mark scheme was provided in the assignment brief. `correct` is a
   simple `score >= 3` threshold.

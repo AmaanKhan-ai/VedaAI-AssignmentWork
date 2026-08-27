@@ -3,7 +3,12 @@ import { extractAnswers, extractQuestions, gradeAnswers } from "@/lib/gemini";
 import { applyGrades, mapAnswersToQuestions } from "@/lib/matching";
 import { MARKS_PER_QUESTION, type ExtractionApiResponse } from "@/lib/types";
 
-export const maxDuration = 60;
+// A multi-page real answer sheet (extractQuestions + extractAnswers in
+// parallel, then gradeAnswers after) measured at ~85s locally for a single
+// document during testing — comfortably past the 60s this was previously
+// set to, which is the likely cause of a request that submits successfully
+// but never returns on the deployed function.
+export const maxDuration = 300;
 
 // Converting to base64 happens here, server-side, rather than in the
 // request body — base64 adds ~33% overhead on top of an already-compressed

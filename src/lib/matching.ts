@@ -47,6 +47,27 @@ function sortReadingOrder(
   return a.box[0] - b.box[0]; // yMin
 }
 
+// LLM judgment on "is this connected to the answer in progress" is not
+// fully reliable run-to-run (confirmed live: the exact same prompt/document
+// sometimes correctly links a lettered sub-heading to its question, and
+// sometimes doesn't). This is a deterministic backstop for the specific
+// pattern that keeps tripping the model up — a transcript that visibly
+// opens with a lettered/roman-numeral sub-part or bullet marker ("a)",
+// "(b)", "iii)", "• ", "- ") is essentially never a stray personal note and
+// essentially never a real new top-level question number either (those are
+// arabic numerals per normalizeLabel) — it's structure *within* one answer.
+// When this matches, it overrides whatever the model reported for
+// isStrayNote or questionNumber.
+function looksLikeSubHeading(transcript: string): boolean {
+  const t = transcript.trim();
+  return (
+    /^\(?[a-z]\)/i.test(t) ||
+    /^[a-z]\.\s/i.test(t) ||
+    /^\(?[ivxlcdm]{1,4}\)/i.test(t) ||
+    /^[*•\-]\s/.test(t)
+  );
+}
+
 export function mapAnswersToQuestions(
   questions: ExtractedQuestion[],
   answers: ExtractedAnswerFragment[]
@@ -69,6 +90,11 @@ export function mapAnswersToQuestions(
     if (rawKey && knownKeys.has(rawKey)) {
       // Explicit, recognized label — start (or continue) this question.
       currentKey = rawKey;
+      const list = byKey.get(currentKey) ?? [];
+      list.push(answer);
+      byKey.set(currentKey, list);
+    } else if (currentKey && looksLikeSubHeading(answer.transcript)) {
+      // Deterministic override — see looksLikeSubHeading's comment.
       const list = byKey.get(currentKey) ?? [];
       list.push(answer);
       byKey.set(currentKey, list);

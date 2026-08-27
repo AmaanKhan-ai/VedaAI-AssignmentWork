@@ -1,8 +1,11 @@
 "use client";
 
 // Converts an uploaded File (PDF or image) into an array of page images,
-// each downscaled and re-encoded as a JPEG data URL so payloads stay small
-// enough for a serverless function body limit.
+// each downscaled and re-encoded as a JPEG Blob. Blobs (not base64 data
+// URLs) are what actually go over the wire to the API route, via
+// multipart/form-data — base64 alone adds ~33% overhead on top of an
+// already-compressed image, and that overhead is what was pushing a
+// multi-page upload over Vercel's serverless request body limit (HTTP 413).
 
 const MAX_DIMENSION = 1600;
 const JPEG_QUALITY = 0.85;
@@ -17,8 +20,14 @@ async function loadPdfJs() {
   return pdfjs;
 }
 
-function canvasToJpegDataUrl(canvas: HTMLCanvasElement): string {
-  return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+function canvasToJpegBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Canvas toBlob failed"))),
+      "image/jpeg",
+      JPEG_QUALITY
+    );
+  });
 }
 
 function drawScaled(
@@ -38,11 +47,11 @@ function drawScaled(
   return canvas;
 }
 
-async function rasterizePdf(file: File): Promise<string[]> {
+async function rasterizePdf(file: File): Promise<Blob[]> {
   const pdfjs = await loadPdfJs();
   const buffer = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buffer }).promise;
-  const pages: string[] = [];
+  const pages: Blob[] = [];
 
   for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
     const page = await doc.getPage(pageNum);
@@ -57,13 +66,13 @@ async function rasterizePdf(file: File): Promise<string[]> {
     if (!ctx) throw new Error("Canvas 2D context unavailable");
 
     await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-    pages.push(canvasToJpegDataUrl(canvas));
+    pages.push(await canvasToJpegBlob(canvas));
   }
 
   return pages;
 }
 
-async function rasterizeImage(file: File): Promise<string[]> {
+async function rasterizeImage(file: File): Promise<Blob[]> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
@@ -79,11 +88,11 @@ async function rasterizeImage(file: File): Promise<string[]> {
   });
 
   const canvas = drawScaled(img, img.naturalWidth, img.naturalHeight);
-  return [canvasToJpegDataUrl(canvas)];
+  return [await canvasToJpegBlob(canvas)];
 }
 
-// Returns one JPEG data URL per page (PDFs yield one per page; images yield one).
-export async function fileToPageImages(file: File): Promise<string[]> {
+// Returns one JPEG Blob per page (PDFs yield one per page; images yield one).
+export async function fileToPageImages(file: File): Promise<Blob[]> {
   if (file.type === "application/pdf") {
     return rasterizePdf(file);
   }

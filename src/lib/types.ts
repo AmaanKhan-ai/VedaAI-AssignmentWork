@@ -36,9 +36,11 @@ export interface MappedQuestion {
   grade: GradedAnswer | null;
 }
 
-export interface ExtractionResult {
-  questionPages: string[]; // data URLs, for display
-  answerPages: string[]; // data URLs, for display
+// What the API route returns — no image bytes. The client already holds
+// the original page Blobs it uploaded, so echoing them back as base64 JSON
+// would be a redundant, potentially large round-trip (this is what pushed
+// the response side toward the same body-size problem as the request side).
+export interface ExtractionApiResponse {
   questions: MappedQuestion[];
   unmatchedAnswers: ExtractedAnswerFragment[];
   summary: {
@@ -48,4 +50,11 @@ export interface ExtractionResult {
     totalScore: number;
     maxScore: number;
   } | null;
+}
+
+// The full client-side result: the API response plus locally-created blob:
+// URLs (via URL.createObjectURL) for the pages the client already has.
+export interface ExtractionResult extends ExtractionApiResponse {
+  questionPages: string[]; // blob: URLs, for display
+  answerPages: string[]; // blob: URLs, for display
 }

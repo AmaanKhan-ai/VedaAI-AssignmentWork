@@ -7,7 +7,7 @@ import { ReviewScreen } from "@/components/ReviewScreen";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { fileToPageImages } from "@/lib/pdf";
-import type { ExtractionResult } from "@/lib/types";
+import type { ExtractionApiResponse, ExtractionResult } from "@/lib/types";
 
 type Stage = "upload" | "extracting" | "review";
 
@@ -35,10 +35,18 @@ export default function Home() {
       ]);
 
       setNote("Extracting questions and answers…");
+      const formData = new FormData();
+      formData.set("grade", String(gradeEnabled));
+      questionPages.forEach((blob, i) =>
+        formData.append("questionPage", blob, `question-${i}.jpg`)
+      );
+      answerPages.forEach((blob, i) =>
+        formData.append("answerPage", blob, `answer-${i}.jpg`)
+      );
+
       const res = await fetch("/api/extract", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionPages, answerPages, grade: gradeEnabled }),
+        body: formData,
       });
 
       if (!res.ok) {
@@ -46,7 +54,12 @@ export default function Home() {
         throw new Error(body.error || `Request failed (${res.status})`);
       }
 
-      const data: ExtractionResult = await res.json();
+      const apiResult: ExtractionApiResponse = await res.json();
+      const data: ExtractionResult = {
+        ...apiResult,
+        questionPages: questionPages.map((b) => URL.createObjectURL(b)),
+        answerPages: answerPages.map((b) => URL.createObjectURL(b)),
+      };
       setResult(data);
       setStage("review");
     } catch (err) {

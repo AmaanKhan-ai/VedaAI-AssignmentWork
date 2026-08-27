@@ -1,40 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractAnswers, extractQuestions, gradeAnswers } from "@/lib/gemini";
 import { applyGrades, mapAnswersToQuestions } from "@/lib/matching";
-import { MARKS_PER_QUESTION, type ExtractionResult } from "@/lib/types";
+import { MARKS_PER_QUESTION, type ExtractionApiResponse } from "@/lib/types";
 
 export const maxDuration = 60;
 
-interface RequestBody {
-  questionPages: string[];
-  answerPages: string[];
-  grade: boolean;
+// Converting to base64 happens here, server-side, rather than in the
+// request body — base64 adds ~33% overhead on top of an already-compressed
+// image, and doing that over the wire (as JSON) was what pushed a
+// multi-page upload past Vercel's serverless request body limit (HTTP 413).
+// The client instead sends raw JPEG blobs via multipart/form-data; Gemini's
+// inlineData API still needs base64, so it's produced here instead, against
+// the function's memory limit rather than the request's.
+async function fileToDataUrl(file: File): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const mimeType = file.type || "image/jpeg";
+  return `data:${mimeType};base64,${buffer.toString("base64")}`;
 }
 
 export async function POST(req: NextRequest) {
-  let body: RequestBody;
+  let formData: FormData;
   try {
-    body = await req.json();
+    formData = await req.formData();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
-  const { questionPages, answerPages, grade } = body;
-
-  if (!Array.isArray(questionPages) || questionPages.length === 0) {
     return NextResponse.json(
-      { error: "questionPages must be a non-empty array" },
+      { error: "Invalid multipart form data" },
       { status: 400 }
     );
   }
-  if (!Array.isArray(answerPages) || answerPages.length === 0) {
+
+  const questionFiles = formData.getAll("questionPage").filter(
+    (v): v is File => v instanceof File
+  );
+  const answerFiles = formData.getAll("answerPage").filter(
+    (v): v is File => v instanceof File
+  );
+  const grade = formData.get("grade") === "true";
+
+  if (questionFiles.length === 0) {
     return NextResponse.json(
-      { error: "answerPages must be a non-empty array" },
+      { error: "At least one questionPage file is required" },
+      { status: 400 }
+    );
+  }
+  if (answerFiles.length === 0) {
+    return NextResponse.json(
+      { error: "At least one answerPage file is required" },
       { status: 400 }
     );
   }
 
   try {
+    const [questionPages, answerPages] = await Promise.all([
+      Promise.all(questionFiles.map(fileToDataUrl)),
+      Promise.all(answerFiles.map(fileToDataUrl)),
+    ]);
+
     const [questions, answers] = await Promise.all([
       extractQuestions(questionPages),
       extractAnswers(answerPages),
@@ -46,7 +67,7 @@ export async function POST(req: NextRequest) {
     );
 
     let finalQuestions = mapped;
-    let summary: ExtractionResult["summary"] = null;
+    let summary: ExtractionApiResponse["summary"] = null;
 
     if (grade) {
       const answeredPairs = mapped
@@ -78,9 +99,7 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    const result: ExtractionResult = {
-      questionPages,
-      answerPages,
+    const result: ExtractionApiResponse = {
       questions: finalQuestions,
       unmatchedAnswers,
       summary,

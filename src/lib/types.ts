@@ -14,7 +14,7 @@ export interface ExtractedQuestion {
 
 export interface ExtractedAnswerFragment {
   questionNumber: string | null; // the label visible on THIS fragment, or null if none is written on it
-  continuesFromAbove: boolean; // true if this directly continues the content immediately before it in reading order
+  isStrayNote: boolean; // true ONLY if this is clearly not part of any exam answer (a personal reminder, doodle, crossed-out aside) — everything else, including sub-headings and unlabeled continuations, is false
   transcript: string;
   page: number; // index into answer sheet pages
   box: Box;

@@ -23,17 +23,22 @@ export function normalizeLabel(raw: string | null | undefined): string | null {
 }
 
 // A long handwritten answer is usually split by the model into several
-// fragments (one per paragraph/sub-heading), and the student only writes the
-// question number once, at the top of the answer. Rather than trust the
-// model to remember and repeat that label across many later fragments
-// (observed to be inconsistent across repeated runs on the same document),
-// each fragment instead reports a simple, local judgment —
-// "continuesFromAbove" — and this function does the actual linking
-// deterministically, in reading order. A fragment only joins the question in
-// progress if the model explicitly said it continues it; anything else
-// (an unrecognized label, or continuesFromAbove: false with no label) is
-// genuinely unmatched, and resets what "in progress" means so it doesn't
-// bleed into whatever question happens to follow it.
+// fragments (one per paragraph/sub-heading/bullet), and the student only
+// writes the question number once, at the top of the answer. Rather than
+// trust the model to remember and repeat that label across many later
+// fragments (observed to be inconsistent across repeated runs), or to
+// reliably judge "is this still the same answer" for content that LOOKS
+// like a new section (lettered sub-headings, bullet lists) but isn't
+// (observed on a real document: an answer covering four sub-topics with
+// its own "a)"/"b)"/"c)"/"d)" headings had every sub-topic after the first
+// misjudged as disconnected and dropped to unmatched) — the model is only
+// asked the much narrower, more reliable question "is this clearly NOT an
+// exam answer at all" (isStrayNote). Anything else with no label of its own
+// defaults to joining whatever question is currently in progress. This
+// trades a small risk of over-attaching a genuinely new but unlabeled
+// section to the wrong question for reliably NOT losing real answer content
+// — the latter being both more common in practice and more misleading to a
+// grader (an unfairly low score) than the former.
 function sortReadingOrder(
   a: ExtractedAnswerFragment,
   b: ExtractedAnswerFragment
@@ -67,19 +72,24 @@ export function mapAnswersToQuestions(
       const list = byKey.get(currentKey) ?? [];
       list.push(answer);
       byKey.set(currentKey, list);
-    } else if (!rawKey && answer.continuesFromAbove && currentKey) {
-      // No label of its own, but explicitly marked as continuing what's
-      // already in progress.
+    } else if (answer.isStrayNote) {
+      // Genuinely not part of any answer — set aside, but don't disturb
+      // which question is "in progress"; a stray aside in the middle of an
+      // answer shouldn't sever the next real fragment from it.
+      unmatchedAnswers.push(answer);
+    } else if (rawKey) {
+      // A label was written, but it doesn't match any real question —
+      // something unexpected is happening here, so don't guess.
+      unmatchedAnswers.push(answer);
+      currentKey = null;
+    } else if (currentKey) {
+      // No label, not a stray note — join the question in progress.
       const list = byKey.get(currentKey) ?? [];
       list.push(answer);
       byKey.set(currentKey, list);
     } else {
-      // An explicit label that matches no real question, or content that
-      // isn't a continuation of anything in progress — genuinely unmatched.
-      // Reset currentKey so a later "continuesFromAbove" fragment attaches
-      // to THIS unmatched section rather than an unrelated earlier question.
+      // No label, nothing in progress to attach to.
       unmatchedAnswers.push(answer);
-      currentKey = null;
     }
   }
 

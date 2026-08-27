@@ -1,8 +1,59 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ExtractionResult, MappedQuestion } from "@/lib/types";
+import type { Box, ExtractionResult, MappedQuestion } from "@/lib/types";
 import { IconCheck, IconCross, IconDash } from "./icons";
+
+// Horizontal extent of a highlight band, and how far it can reach past its
+// own last fragment when nothing else follows it on the page — both in the
+// 0-1000 normalized coordinate space.
+const BAND_LEFT = 20;
+const BAND_RIGHT = 980;
+const BAND_GAP_BEFORE_NEXT = 12;
+const BAND_TRAILING_PADDING = 25;
+
+interface FlatFragment {
+  ownerIndex: number; // index into result.questions, or -1 for unmatched
+  page: number;
+  box: Box;
+}
+
+// Merges a question's (possibly many, choppy) fragment boxes on one page
+// into continuous highlight bands — one per contiguous run — so the
+// highlight reads as "this whole block is the answer" instead of a scatter
+// of small boxes with gaps at every line break. A band stops right before
+// whatever comes next (another question's content, or unmatched content),
+// or a short distance past its own last line if nothing follows it on the
+// page.
+function computeBands(
+  flat: FlatFragment[],
+  page: number,
+  ownerIndex: number
+): { top: number; bottom: number }[] {
+  const onPage = flat.filter((f) => f.page === page);
+  const bands: { top: number; bottom: number }[] = [];
+  let i = 0;
+  while (i < onPage.length) {
+    if (onPage[i].ownerIndex !== ownerIndex) {
+      i++;
+      continue;
+    }
+    const top = onPage[i].box[0];
+    let bottom = onPage[i].box[2];
+    let j = i;
+    while (j < onPage.length && onPage[j].ownerIndex === ownerIndex) {
+      bottom = Math.max(bottom, onPage[j].box[2]);
+      j++;
+    }
+    const next = onPage[j];
+    const cappedBottom = next
+      ? Math.max(top + 10, next.box[0] - BAND_GAP_BEFORE_NEXT)
+      : Math.min(1000, bottom + BAND_TRAILING_PADDING);
+    bands.push({ top, bottom: cappedBottom });
+    i = j;
+  }
+  return bands;
+}
 
 function StatusIcon({ q }: { q: MappedQuestion }) {
   if (q.status === "unanswered") return <IconDash className="h-5 w-5 shrink-0" />;
@@ -76,6 +127,18 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
     [selected]
   );
 
+  const allFragmentsFlat = useMemo<FlatFragment[]>(() => {
+    const list: FlatFragment[] = [];
+    result.questions.forEach((q, ownerIndex) => {
+      q.fragments.forEach((f) => list.push({ ownerIndex, page: f.page, box: f.box }));
+    });
+    result.unmatchedAnswers.forEach((f) =>
+      list.push({ ownerIndex: -1, page: f.page, box: f.box })
+    );
+    list.sort((a, b) => a.page - b.page || a.box[0] - b.box[0]);
+    return list;
+  }, [result]);
+
   const [currentPage, setCurrentPage] = useState(0);
 
   function selectQuestion(index: number) {
@@ -86,8 +149,13 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
     }
   }
 
-  const boxesOnPage =
-    selected?.fragments.filter((f) => f.page === currentPage) ?? [];
+  const bandsOnPage = useMemo(
+    () =>
+      selectedIndex !== null
+        ? computeBands(allFragmentsFlat, currentPage, selectedIndex)
+        : [],
+    [allFragmentsFlat, currentPage, selectedIndex]
+  );
 
   return (
     <div className="flex min-h-full flex-col">
@@ -171,21 +239,18 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
                   className="w-full select-none"
                   draggable={false}
                 />
-                {boxesOnPage.map((f, i) => {
-                  const [yMin, xMin, yMax, xMax] = f.box;
-                  return (
-                    <div
-                      key={i}
-                      className="absolute rounded-sm border-2 border-emerald-500 bg-emerald-400/20 shadow-[0_0_0_2px_rgba(255,255,255,0.6)]"
-                      style={{
-                        left: `${xMin / 10}%`,
-                        top: `${yMin / 10}%`,
-                        width: `${(xMax - xMin) / 10}%`,
-                        height: `${(yMax - yMin) / 10}%`,
-                      }}
-                    />
-                  );
-                })}
+                {bandsOnPage.map((band, i) => (
+                  <div
+                    key={i}
+                    className="absolute rounded-sm border-2 border-emerald-500 bg-emerald-400/20 shadow-[0_0_0_2px_rgba(255,255,255,0.6)]"
+                    style={{
+                      left: `${BAND_LEFT / 10}%`,
+                      top: `${band.top / 10}%`,
+                      width: `${(BAND_RIGHT - BAND_LEFT) / 10}%`,
+                      height: `${(band.bottom - band.top) / 10}%`,
+                    }}
+                  />
+                ))}
               </div>
             ) : (
               <div className="flex h-64 items-center justify-center text-sm text-neutral-400">

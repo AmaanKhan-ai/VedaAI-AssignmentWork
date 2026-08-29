@@ -58,7 +58,7 @@ function Dropzone({ label, file, onSelect, onError }: DropzoneProps) {
         }}
       />
       <span
-        className={`flex h-10 w-10 items-center justify-center rounded-full ${
+        className={`flex h-10 w-10 items-center justify-center rounded-lg lg:h-12 lg:w-12 ${
           file ? "bg-emerald-100 text-emerald-600" : "bg-surface-200 text-text-strong"
         }`}
       >
@@ -161,17 +161,17 @@ export function UploadScreen({
           type="button"
           disabled={!canContinue}
           onClick={onContinue}
-          className={`mt-7 flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition-colors ${
+          className={`mx-auto mt-7 flex items-center justify-center gap-2 rounded-full border-2 px-8 py-3 text-sm font-medium transition-colors ${
             canContinue
-              ? "bg-text-strong text-white hover:bg-black"
-              : "cursor-not-allowed bg-surface-100 text-text-faint"
+              ? "border-white bg-text-strong text-white hover:bg-black"
+              : "border-transparent bg-surface-100 text-text-faint"
           }`}
         >
           Start Mapping
           <IconArrowRight className="h-4 w-4" />
         </button>
-        <p className="mt-3 text-center text-sm text-text-muted">
-          We&apos;ll extract questions and match handwritten answers automatically
+        <p className="mx-auto mt-3 max-w-[26rem] text-center text-sm text-text-muted">
+          Once both files are uploaded, you&apos;ll be able to map answers with questions
         </p>
       </div>
     </div>

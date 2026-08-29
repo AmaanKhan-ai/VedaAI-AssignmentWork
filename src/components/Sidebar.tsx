@@ -41,9 +41,9 @@ export function Sidebar({ userName }: { userName: string }) {
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-neutral-200/70 bg-white lg:flex">
-      <div className="flex items-center gap-2 px-5 py-5">
-        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-text-strong text-white">
-          <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+      <div className="flex items-center gap-2.5 px-5 py-5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-text-strong text-white">
+          <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
             <path
               d="M4 6h16M4 12h10M4 18h16"
               stroke="currentColor"
@@ -73,15 +73,15 @@ export function Sidebar({ userName }: { userName: string }) {
         ))}
       </nav>
 
-      <div className="mx-3 mb-4 flex items-center gap-2.5 rounded-lg border border-border-default px-3 py-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-text-strong text-xs font-semibold text-white">
+      <div className="mx-3 mb-4 flex items-center gap-2.5 rounded-2xl bg-surface-100 px-3 py-2.5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-text-strong text-sm font-semibold text-white">
           {initials}
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-sm font-medium text-text-strong">
+          <span className="block truncate text-base font-bold text-text-strong">
             {userName}
           </span>
-          <span className="block text-xs text-text-faint">Candidate</span>
+          <span className="block text-sm text-text-muted">Candidate</span>
         </span>
       </div>
     </aside>

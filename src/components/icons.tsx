@@ -81,12 +81,19 @@ export function IconArrowRight({ className = "" }: { className?: string }) {
   );
 }
 
+const CHEVRON_PATHS = {
+  down: "M6 9l6 6 6-6",
+  up: "M6 15l6-6 6 6",
+  left: "M15 6l-6 6 6 6",
+  right: "M9 6l6 6-6 6",
+};
+
 export function IconChevron({
   className = "",
   direction = "down",
 }: {
   className?: string;
-  direction?: "up" | "down";
+  direction?: "up" | "down" | "left" | "right";
 }) {
   return (
     <svg
@@ -96,11 +103,7 @@ export function IconChevron({
       stroke="currentColor"
       strokeWidth="2"
     >
-      <path
-        d={direction === "down" ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d={CHEVRON_PATHS[direction]} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

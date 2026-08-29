@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Box, ExtractionResult, MappedQuestion } from "@/lib/types";
 import { IconChevron } from "./icons";
 
@@ -86,7 +86,7 @@ function ScoreBadge({ score, maxScore }: { score: number; maxScore: number }) {
   const tier = scoreTier(score, maxScore);
   return (
     <span
-      className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold ${SCORE_BADGE_CLASSES[tier]}`}
+      className={`shrink-0 rounded-full px-3 py-1 text-base font-bold ${SCORE_BADGE_CLASSES[tier]}`}
     >
       {score} / {maxScore}
     </span>
@@ -97,13 +97,13 @@ function StatusBadge({ q }: { q: MappedQuestion }) {
   if (q.grade) return <ScoreBadge score={q.grade.score} maxScore={q.grade.maxScore} />;
   if (q.status === "unanswered") {
     return (
-      <span className="shrink-0 rounded-full bg-surface-200 px-3 py-1 text-sm font-bold text-text-faint">
+      <span className="shrink-0 rounded-full bg-surface-200 px-3 py-1 text-base font-bold text-text-faint">
         Unanswered
       </span>
     );
   }
   return (
-    <span className="shrink-0 rounded-full bg-surface-200 px-3 py-1 text-sm font-bold text-text-muted">
+    <span className="shrink-0 rounded-full bg-surface-200 px-3 py-1 text-base font-bold text-text-muted">
       Answered
     </span>
   );
@@ -144,7 +144,7 @@ function QuestionAccordionRow({
       >
         <span className="flex shrink-0 items-center gap-1.5">
           <span
-            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[18px] font-extrabold text-white ${
+            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[20px] font-extrabold text-white ${
               active ? "bg-accent" : "bg-[#2b2b2b]"
             }`}
           >
@@ -156,7 +156,7 @@ function QuestionAccordionRow({
             </span>
           )}
         </span>
-        <span className="min-w-0 flex-1 pt-1 text-sm text-text-strong sm:text-base">{q.text}</span>
+        <span className="min-w-0 flex-1 pt-1 text-sm text-text-strong lg:text-base">{q.text}</span>
         <span className="flex shrink-0 items-center gap-2 pt-0.5">
           <StatusBadge q={q} />
           <button
@@ -223,13 +223,22 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
   const [mobileTab, setMobileTab] = useState<"questions" | "answer">("questions");
   const [zoomIndex, setZoomIndex] = useState(0);
   const zoom = ZOOM_LEVELS[zoomIndex];
+  const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Figma shows every answer sheet page stacked in one continuous scroll
+  // rather than paginated one at a time, so "going to a page" means
+  // scrolling that page into view, not swapping which image is rendered.
+  function scrollToPage(page: number) {
+    setCurrentPage(page);
+    pageRefs.current[page]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   function selectQuestion(index: number) {
     setActiveIndex(index);
     setExpandedIndices((prev) => new Set(prev).add(index));
     const q = result.questions[index];
     if (q.fragments.length > 0) {
-      setCurrentPage(q.fragments[0].page);
+      scrollToPage(q.fragments[0].page);
     }
     setMobileTab("answer"); // on phone, picking a question should jump straight to its highlight
   }
@@ -261,10 +270,9 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
     });
   }
 
-  const bandsOnPage = useMemo(
-    () => (activeIndex !== null ? computeBands(allFragmentsFlat, currentPage, activeIndex) : []),
-    [allFragmentsFlat, currentPage, activeIndex]
-  );
+  function bandsForPage(page: number) {
+    return activeIndex !== null ? computeBands(allFragmentsFlat, page, activeIndex) : [];
+  }
 
   return (
     <div className="flex min-h-full flex-col">
@@ -305,11 +313,11 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
         <div
           className={`${
             mobileTab === "questions" ? "block" : "hidden"
-          } border-b border-border-default bg-surface-300/40 p-4 lg:block lg:border-b-0 lg:border-r`}
+          } border-b border-border-default bg-white p-4 lg:block lg:border-b-0 lg:border-r`}
         >
           <div className="mb-3 flex items-center justify-between gap-2 px-1">
             <p className="text-base font-bold text-text-strong">
-              Extracted Questions <span className="hidden font-normal text-text-faint sm:inline">(from question paper)</span>
+              Extracted Questions (from question paper)
             </p>
             {gradedIndices.length > 0 && (
               <button
@@ -359,7 +367,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
             mobileTab === "answer" ? "flex" : "hidden"
           } flex-col gap-4 p-4 lg:flex`}
         >
-          <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border-default bg-white">
+          <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-black bg-white">
             <div className="flex items-center justify-between bg-text-strong px-4 py-3">
               <span className="text-base font-bold text-white">Answer Sheet</span>
               <div className="flex items-center gap-2">
@@ -389,10 +397,30 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
                   </button>
                 </div>
                 {result.answerPages.length > 1 && (
-                  <div className="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1">
+                  <div className="flex items-center gap-1 rounded-lg bg-white/10 px-1 py-1">
+                    <button
+                      type="button"
+                      onClick={() => scrollToPage(Math.max(0, currentPage - 1))}
+                      disabled={currentPage === 0}
+                      aria-label="Previous page"
+                      className="flex h-6 w-6 items-center justify-center rounded text-white hover:bg-white/10 disabled:opacity-30"
+                    >
+                      <IconChevron direction="left" className="h-3 w-3" />
+                    </button>
                     <span className="text-sm text-white">
                       Page {currentPage + 1} of {result.answerPages.length}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        scrollToPage(Math.min(result.answerPages.length - 1, currentPage + 1))
+                      }
+                      disabled={currentPage === result.answerPages.length - 1}
+                      aria-label="Next page"
+                      className="flex h-6 w-6 items-center justify-center rounded text-white hover:bg-white/10 disabled:opacity-30"
+                    >
+                      <IconChevron direction="right" className="h-3 w-3" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -401,33 +429,51 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
             <div className="relative flex-1 overflow-auto bg-surface-100">
               {result.answerPages.length > 0 ? (
                 <div
-                  className="relative mx-auto"
+                  className="mx-auto flex flex-col gap-6 py-4"
                   style={{ width: `${zoom * 100}%`, maxWidth: zoom === 1 ? "42rem" : "none" }}
                 >
-                  <img
-                    src={result.answerPages[currentPage]}
-                    alt={`Answer sheet page ${currentPage + 1}`}
-                    className="w-full select-none"
-                    draggable={false}
-                  />
-                  {bandsOnPage.map((band, i) => (
-                    <div
-                      key={i}
-                      className="absolute rounded-2xl border-2 border-highlight-stroke bg-highlight-fill/30 shadow-[0_0_0_1.5px_#ffffff]"
-                      style={{
-                        left: `${BAND_LEFT / 10}%`,
-                        top: `${band.top / 10}%`,
-                        width: `${(BAND_RIGHT - BAND_LEFT) / 10}%`,
-                        height: `${(band.bottom - band.top) / 10}%`,
-                      }}
-                    >
-                      {i === 0 && active && (
-                        <span className="absolute -top-6 left-2 rounded bg-score-good-fg px-2 py-1 text-sm font-bold text-white shadow-sm">
-                          Q{active.number}
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                  {result.answerPages.map((src, page) => {
+                    const bands = bandsForPage(page);
+                    return (
+                      <div
+                        key={page}
+                        ref={(el) => {
+                          pageRefs.current[page] = el;
+                        }}
+                        className="relative"
+                      >
+                        {result.answerPages.length > 1 && (
+                          <p className="mb-1 text-xs font-medium text-text-faint">
+                            Page {page + 1}
+                          </p>
+                        )}
+                        <img
+                          src={src}
+                          alt={`Answer sheet page ${page + 1}`}
+                          className="w-full select-none"
+                          draggable={false}
+                        />
+                        {bands.map((band, i) => (
+                          <div
+                            key={i}
+                            className="absolute rounded-2xl border-2 border-highlight-stroke bg-highlight-fill/30 shadow-[0_0_0_1.5px_#ffffff]"
+                            style={{
+                              left: `${BAND_LEFT / 10}%`,
+                              top: `${band.top / 10}%`,
+                              width: `${(BAND_RIGHT - BAND_LEFT) / 10}%`,
+                              height: `${(band.bottom - band.top) / 10}%`,
+                            }}
+                          >
+                            {i === 0 && active && (
+                              <span className="absolute -top-7 left-2 rounded-sm bg-score-good-fg px-2 py-1 text-base font-bold text-white shadow-sm">
+                                Q{active.number}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="flex h-64 items-center justify-center text-sm text-text-faint">
@@ -442,7 +488,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
               {result.answerPages.map((_, i) => (
                 <button
                   key={i}
-                  onClick={() => setCurrentPage(i)}
+                  onClick={() => scrollToPage(i)}
                   className={`h-2.5 w-2.5 rounded-full transition-colors ${
                     i === currentPage
                       ? "bg-accent"

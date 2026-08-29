@@ -140,6 +140,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
   }, [result]);
 
   const [currentPage, setCurrentPage] = useState(0);
+  const [mobileTab, setMobileTab] = useState<"questions" | "answer">("questions");
 
   function selectQuestion(index: number) {
     setSelectedIndex(index);
@@ -147,6 +148,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
     if (q.fragments.length > 0) {
       setCurrentPage(q.fragments[0].page);
     }
+    setMobileTab("answer"); // on phone, picking a question should jump straight to its highlight
   }
 
   const bandsOnPage = useMemo(
@@ -171,9 +173,31 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
         </div>
       )}
 
+      {/* Mobile-only tab switcher — desktop shows both panels side by side */}
+      <div className="flex gap-1 border-b border-neutral-200/70 bg-white px-4 pt-3 lg:hidden">
+        {(["questions", "answer"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setMobileTab(tab)}
+            className={`rounded-t-lg px-3 py-2 text-sm font-medium transition-colors ${
+              mobileTab === tab
+                ? "border-b-2 border-accent text-accent"
+                : "border-b-2 border-transparent text-neutral-400"
+            }`}
+          >
+            {tab === "questions" ? "Questions" : "Answer Sheet"}
+          </button>
+        ))}
+      </div>
+
       <div className="grid flex-1 grid-cols-1 gap-0 lg:grid-cols-[360px_1fr]">
         {/* Question list */}
-        <div className="border-b border-neutral-200/70 bg-white p-4 lg:border-b-0 lg:border-r">
+        <div
+          className={`${
+            mobileTab === "questions" ? "block" : "hidden"
+          } border-b border-neutral-200/70 bg-white p-4 lg:block lg:border-b-0 lg:border-r`}
+        >
           <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-neutral-400">
             Questions
           </p>
@@ -207,7 +231,11 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
         </div>
 
         {/* Answer sheet viewer */}
-        <div className="flex flex-col gap-4 p-4">
+        <div
+          className={`${
+            mobileTab === "answer" ? "flex" : "hidden"
+          } flex-col gap-4 p-4 lg:flex`}
+        >
           {selected && (
             <div className="rounded-xl border border-neutral-200 bg-white p-4">
               <div className="mb-1 text-xs font-mono text-neutral-400">

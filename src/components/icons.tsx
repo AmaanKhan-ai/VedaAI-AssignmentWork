@@ -108,6 +108,53 @@ export function IconChevron({
   );
 }
 
+export function IconBell({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path
+        d="M6 10a6 6 0 1112 0v4l1.5 2.5h-15L6 14v-4z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M10 19a2 2 0 004 0" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconMenu({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconArrowLeft({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M14 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconFile({ className = "" }: { className?: string }) {
   return (
     <svg

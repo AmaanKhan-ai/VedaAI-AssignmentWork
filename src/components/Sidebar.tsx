@@ -40,7 +40,7 @@ export function Sidebar({ userName }: { userName: string }) {
     .toUpperCase();
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-neutral-200/70 bg-white lg:flex">
+    <aside className="hidden w-64 shrink-0 flex-col bg-white lg:flex lg:rounded-2xl lg:shadow-[0_32px_48px_0_rgba(0,0,0,0.2),0_16px_48px_0_rgba(0,0,0,0.12)]">
       <div className="flex items-center gap-2.5 px-5 py-5">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-text-strong text-white">
           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">

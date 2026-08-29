@@ -84,9 +84,9 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden lg:gap-3 lg:p-3">
       <Sidebar userName={USER_NAME} />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col lg:gap-3">
         <TopBar
           title="Exams"
           userName={USER_NAME}

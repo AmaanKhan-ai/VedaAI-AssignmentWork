@@ -277,7 +277,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
   return (
     <div className="flex min-h-full flex-col">
       {result.summary && (
-        <div className="flex items-center justify-between border-b border-border-default bg-white px-6 py-3">
+        <div className="flex items-center justify-between border-b border-border-default bg-white px-6 py-3 lg:border-none lg:bg-transparent lg:px-3 lg:pt-3">
           <span className="text-sm text-text-muted">
             {result.summary.answered} of {result.summary.totalQuestions} answered
             &middot; {result.summary.unanswered} unanswered
@@ -308,12 +308,12 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
         </div>
       </div>
 
-      <div className="grid flex-1 grid-cols-1 gap-0 lg:grid-cols-2">
-        {/* Question list (accordion) */}
+      <div className="grid flex-1 grid-cols-1 gap-0 lg:grid-cols-2 lg:gap-3 lg:p-3">
+        {/* Question list (accordion) — its own floating rounded card on desktop */}
         <div
           className={`${
             mobileTab === "questions" ? "block" : "hidden"
-          } border-b border-border-default bg-white p-4 lg:block lg:border-b-0 lg:border-r`}
+          } border-b border-border-default bg-white p-4 lg:block lg:rounded-2xl lg:border-b-0`}
         >
           <div className="mb-3 flex items-center justify-between gap-2 px-1">
             <p className="text-base font-bold text-text-strong">
@@ -361,11 +361,13 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
           )}
         </div>
 
-        {/* Answer sheet viewer */}
+        {/* Answer sheet viewer — its own floating card on desktop; the grid's
+            own gap/padding provides the margin there, so this column only
+            keeps padding on mobile where it's the flush panel itself. */}
         <div
           className={`${
             mobileTab === "answer" ? "flex" : "hidden"
-          } flex-col gap-4 p-4 lg:flex`}
+          } flex-col gap-4 p-4 lg:flex lg:p-0`}
         >
           <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-black bg-white">
             <div className="flex items-center justify-between bg-text-strong px-4 py-3">

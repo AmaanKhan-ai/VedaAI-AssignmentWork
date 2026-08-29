@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Box, ExtractionResult, MappedQuestion } from "@/lib/types";
-import { IconCheck, IconCross, IconDash } from "./icons";
+import { IconChevron } from "./icons";
 
 // Horizontal extent of a highlight band, and how far it can reach past its
 // own last fragment when nothing else follows it on the page — both in the
@@ -57,6 +57,16 @@ function computeBands(
   return bands;
 }
 
+// Splits a printed label like "11(a)" into a base number ("11") and a
+// trailing sub-part letter ("a"), matching the two-badge treatment the
+// Figma design uses for lettered sub-parts. Labels that don't fit this
+// shape (roman numerals, "Q5", positional fallbacks) render as one badge.
+function splitNumber(raw: string): { base: string; sub: string | null } {
+  const m = /^(\d+)\s*[.\-]?\s*\(?([a-zA-Z])\)?\.?$/.exec(raw.trim());
+  if (m) return { base: m[1], sub: m[2].toLowerCase() };
+  return { base: raw, sub: null };
+}
+
 type ScoreTier = "good" | "partial" | "bad";
 
 function scoreTier(score: number, maxScore: number): ScoreTier {
@@ -76,75 +86,125 @@ function ScoreBadge({ score, maxScore }: { score: number; maxScore: number }) {
   const tier = scoreTier(score, maxScore);
   return (
     <span
-      className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-mono font-medium ${SCORE_BADGE_CLASSES[tier]}`}
+      className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold ${SCORE_BADGE_CLASSES[tier]}`}
     >
-      {score}/{maxScore}
+      {score} / {maxScore}
     </span>
   );
 }
 
-function StatusIcon({ q }: { q: MappedQuestion }) {
-  if (q.status === "unanswered") return <IconDash className="h-5 w-5 shrink-0" />;
-  if (q.grade) {
-    return q.grade.correct ? (
-      <IconCheck className="h-5 w-5 shrink-0" />
-    ) : (
-      <IconCross className="h-5 w-5 shrink-0" />
+function StatusBadge({ q }: { q: MappedQuestion }) {
+  if (q.grade) return <ScoreBadge score={q.grade.score} maxScore={q.grade.maxScore} />;
+  if (q.status === "unanswered") {
+    return (
+      <span className="shrink-0 rounded-full bg-surface-200 px-3 py-1 text-sm font-bold text-text-faint">
+        Unanswered
+      </span>
     );
   }
   return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[9px] font-medium text-white">
-      A
+    <span className="shrink-0 rounded-full bg-surface-200 px-3 py-1 text-sm font-bold text-text-muted">
+      Answered
     </span>
   );
 }
 
-function QuestionRow({
+function QuestionAccordionRow({
   q,
-  selected,
-  onClick,
+  active,
+  expanded,
+  onSelect,
+  onToggleExpand,
 }: {
   q: MappedQuestion;
-  selected: boolean;
-  onClick: () => void;
+  active: boolean;
+  expanded: boolean;
+  onSelect: () => void;
+  onToggleExpand: () => void;
 }) {
+  const { base, sub } = splitNumber(q.number);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
-        selected
-          ? "border-accent/30 bg-accent-tint"
-          : "border-transparent hover:bg-surface-100"
+    <div
+      className={`rounded-2xl bg-white transition-colors ${
+        active ? "border-2 border-[#ff8d36]" : "border-2 border-transparent"
       }`}
     >
-      <StatusIcon q={q} />
-      <span className="flex-1 min-w-0">
-        <span
-          className={`block text-xs font-mono ${
-            selected ? "text-accent" : "text-text-faint"
-          }`}
-        >
-          Q{q.number}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect();
+          }
+        }}
+        className="flex w-full cursor-pointer items-start gap-3 px-3 py-3 text-left sm:px-4"
+      >
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span
+            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[18px] font-extrabold text-white ${
+              active ? "bg-accent" : "bg-[#2b2b2b]"
+            }`}
+          >
+            {base}
+          </span>
+          {sub && (
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-300 text-base font-bold text-text-strong">
+              {sub}.
+            </span>
+          )}
         </span>
-        <span className="block truncate text-sm text-text-body">{q.text}</span>
-      </span>
-      {q.grade && <ScoreBadge score={q.grade.score} maxScore={q.grade.maxScore} />}
-    </button>
+        <span className="min-w-0 flex-1 pt-1 text-sm text-text-strong sm:text-base">{q.text}</span>
+        <span className="flex shrink-0 items-center gap-2 pt-0.5">
+          <StatusBadge q={q} />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleExpand();
+            }}
+            aria-label={expanded ? "Collapse" : "Expand"}
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface-300 text-text-strong"
+          >
+            <IconChevron direction={expanded ? "up" : "down"} className="h-3.5 w-3.5" />
+          </button>
+        </span>
+      </div>
+
+      {expanded && (
+        <div className="mx-3 mb-3 rounded-2xl bg-surface-300 px-4 py-3 sm:mx-4 sm:mb-4">
+          {q.grade ? (
+            <>
+              <p className="text-base font-bold text-text-strong">AI Feedback</p>
+              <p className="mt-1 text-sm text-text-strong">{q.grade.feedback}</p>
+            </>
+          ) : (
+            <p className="text-sm text-text-faint">
+              {q.status === "unanswered"
+                ? "No answer found for this question."
+                : "No AI feedback available for this answer."}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
 export function ReviewScreen({ result }: { result: ExtractionResult }) {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(
+  const [activeIndex, setActiveIndex] = useState<number | null>(
     result.questions.length > 0 ? 0 : null
   );
-  const selected =
-    selectedIndex !== null ? result.questions[selectedIndex] : null;
+  const [expandedIndices, setExpandedIndices] = useState<Set<number>>(
+    () => new Set(result.questions.length > 0 ? [0] : [])
+  );
+  const active = activeIndex !== null ? result.questions[activeIndex] : null;
 
   const fragmentPages = useMemo(
-    () =>
-      selected ? Array.from(new Set(selected.fragments.map((f) => f.page))) : [],
-    [selected]
+    () => (active ? Array.from(new Set(active.fragments.map((f) => f.page))) : []),
+    [active]
   );
 
   const allFragmentsFlat = useMemo<FlatFragment[]>(() => {
@@ -165,7 +225,8 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
   const zoom = ZOOM_LEVELS[zoomIndex];
 
   function selectQuestion(index: number) {
-    setSelectedIndex(index);
+    setActiveIndex(index);
+    setExpandedIndices((prev) => new Set(prev).add(index));
     const q = result.questions[index];
     if (q.fragments.length > 0) {
       setCurrentPage(q.fragments[0].page);
@@ -173,12 +234,36 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
     setMobileTab("answer"); // on phone, picking a question should jump straight to its highlight
   }
 
+  function toggleExpand(index: number) {
+    setExpandedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  const gradedIndices = useMemo(
+    () => result.questions.map((_, i) => i).filter((i) => !!result.questions[i].grade),
+    [result.questions]
+  );
+  const allExpanded =
+    gradedIndices.length > 0 && gradedIndices.every((i) => expandedIndices.has(i));
+
+  function toggleExpandAll() {
+    setExpandedIndices((prev) => {
+      if (allExpanded) {
+        const next = new Set(prev);
+        gradedIndices.forEach((i) => next.delete(i));
+        return next;
+      }
+      return new Set([...prev, ...gradedIndices]);
+    });
+  }
+
   const bandsOnPage = useMemo(
-    () =>
-      selectedIndex !== null
-        ? computeBands(allFragmentsFlat, currentPage, selectedIndex)
-        : [],
-    [allFragmentsFlat, currentPage, selectedIndex]
+    () => (activeIndex !== null ? computeBands(allFragmentsFlat, currentPage, activeIndex) : []),
+    [allFragmentsFlat, currentPage, activeIndex]
   );
 
   return (
@@ -189,7 +274,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
             {result.summary.answered} of {result.summary.totalQuestions} answered
             &middot; {result.summary.unanswered} unanswered
           </span>
-          <span className="rounded-full bg-accent px-3 py-1 text-sm font-mono font-medium text-white">
+          <span className="rounded-full bg-accent px-3 py-1 text-sm font-bold text-white">
             {result.summary.totalScore} / {result.summary.maxScore}
           </span>
         </div>
@@ -203,7 +288,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
               key={tab}
               type="button"
               onClick={() => setMobileTab(tab)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded-full px-4 py-2 text-base font-medium transition-colors ${
                 mobileTab === tab
                   ? "border border-[#7b7b7b] bg-text-strong text-white"
                   : "border border-transparent text-text-muted"
@@ -215,30 +300,44 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
         </div>
       </div>
 
-      <div className="grid flex-1 grid-cols-1 gap-0 lg:grid-cols-[360px_1fr]">
-        {/* Question list */}
+      <div className="grid flex-1 grid-cols-1 gap-0 lg:grid-cols-2">
+        {/* Question list (accordion) */}
         <div
           className={`${
             mobileTab === "questions" ? "block" : "hidden"
-          } border-b border-border-default bg-white p-4 lg:block lg:border-b-0 lg:border-r`}
+          } border-b border-border-default bg-surface-300/40 p-4 lg:block lg:border-b-0 lg:border-r`}
         >
-          <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-text-faint">
-            Questions
-          </p>
-          <div className="flex flex-col gap-1">
+          <div className="mb-3 flex items-center justify-between gap-2 px-1">
+            <p className="text-base font-bold text-text-strong">
+              Extracted Questions <span className="hidden font-normal text-text-faint sm:inline">(from question paper)</span>
+            </p>
+            {gradedIndices.length > 0 && (
+              <button
+                type="button"
+                onClick={toggleExpandAll}
+                className="shrink-0 rounded-full border border-border-default bg-white px-4 py-1.5 text-sm font-medium text-text-strong"
+              >
+                {allExpanded ? "Collapse All" : "Expand All"}
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
             {result.questions.map((q, i) => (
-              <QuestionRow
+              <QuestionAccordionRow
                 key={`${q.number}-${i}`}
                 q={q}
-                selected={i === selectedIndex}
-                onClick={() => selectQuestion(i)}
+                active={i === activeIndex}
+                expanded={expandedIndices.has(i)}
+                onSelect={() => selectQuestion(i)}
+                onToggleExpand={() => toggleExpand(i)}
               />
             ))}
           </div>
 
           {result.unmatchedAnswers.length > 0 && (
             <details className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-              <summary className="cursor-pointer text-xs font-medium text-amber-800">
+              <summary className="cursor-pointer text-sm font-medium text-amber-800">
                 {result.unmatchedAnswers.length} answer segment(s) couldn&rsquo;t
                 be matched to a question
               </summary>
@@ -260,48 +359,21 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
             mobileTab === "answer" ? "flex" : "hidden"
           } flex-col gap-4 p-4 lg:flex`}
         >
-          {selected && (
-            <div className="rounded-xl border border-border-default bg-white p-4">
-              <div className="mb-1 text-xs font-mono text-text-faint">
-                Q{selected.number}
-              </div>
-              <p className="text-sm text-text-body">{selected.text}</p>
-              {selected.grade && (
-                <p className="mt-3 rounded-lg bg-surface-100 px-3 py-2 text-sm text-text-muted">
-                  <span className="font-medium text-text-strong">
-                    AI feedback:{" "}
-                  </span>
-                  {selected.grade.feedback}
-                </p>
-              )}
-              {selected.status === "unanswered" && (
-                <p className="mt-3 text-sm text-text-faint">
-                  No answer found for this question.
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border-default bg-white">
-            <div className="flex items-center justify-between bg-text-strong px-4 py-2.5">
-              <span className="text-sm font-medium text-white">Answer Sheet</span>
-              <div className="flex items-center gap-3">
-                {result.answerPages.length > 1 && (
-                  <span className="text-xs text-white/70">
-                    Page {currentPage + 1} / {result.answerPages.length}
-                  </span>
-                )}
-                <div className="flex items-center gap-1">
+          <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border-default bg-white">
+            <div className="flex items-center justify-between bg-text-strong px-4 py-3">
+              <span className="text-base font-bold text-white">Answer Sheet</span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 rounded-lg bg-white/10 px-1.5 py-1">
                   <button
                     type="button"
                     onClick={() => setZoomIndex((z) => Math.max(0, z - 1))}
                     disabled={zoomIndex === 0}
                     aria-label="Zoom out"
-                    className="flex h-6 w-6 items-center justify-center rounded text-white/80 hover:bg-white/10 disabled:opacity-30"
+                    className="flex h-6 w-6 items-center justify-center rounded text-white hover:bg-white/10 disabled:opacity-30"
                   >
                     −
                   </button>
-                  <span className="w-9 text-center text-xs text-white/80">
+                  <span className="w-10 text-center text-sm text-white">
                     {Math.round(zoom * 100)}%
                   </span>
                   <button
@@ -311,11 +383,18 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
                     }
                     disabled={zoomIndex === ZOOM_LEVELS.length - 1}
                     aria-label="Zoom in"
-                    className="flex h-6 w-6 items-center justify-center rounded text-white/80 hover:bg-white/10 disabled:opacity-30"
+                    className="flex h-6 w-6 items-center justify-center rounded text-white hover:bg-white/10 disabled:opacity-30"
                   >
                     +
                   </button>
                 </div>
+                {result.answerPages.length > 1 && (
+                  <div className="flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1">
+                    <span className="text-sm text-white">
+                      Page {currentPage + 1} of {result.answerPages.length}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -334,7 +413,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
                   {bandsOnPage.map((band, i) => (
                     <div
                       key={i}
-                      className="absolute rounded-sm border-2 border-highlight-stroke bg-highlight-fill/25"
+                      className="absolute rounded-2xl border-2 border-highlight-stroke bg-highlight-fill/30 shadow-[0_0_0_1.5px_#ffffff]"
                       style={{
                         left: `${BAND_LEFT / 10}%`,
                         top: `${band.top / 10}%`,
@@ -342,9 +421,9 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
                         height: `${(band.bottom - band.top) / 10}%`,
                       }}
                     >
-                      {i === 0 && selected && (
-                        <span className="absolute -top-2.5 left-1 rounded-sm bg-highlight-stroke px-1.5 py-0.5 text-[10px] font-mono font-bold text-white shadow-sm">
-                          Q{selected.number}
+                      {i === 0 && active && (
+                        <span className="absolute -top-6 left-2 rounded bg-score-good-fg px-2 py-1 text-sm font-bold text-white shadow-sm">
+                          Q{active.number}
                         </span>
                       )}
                     </div>

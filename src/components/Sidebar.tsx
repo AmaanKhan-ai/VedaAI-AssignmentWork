@@ -7,7 +7,7 @@ function NavIcon({ path }: { path: string }) {
       strokeWidth="1.6"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="h-[18px] w-[18px]"
+      className="h-5 w-5"
     >
       <path d={path} />
     </svg>
@@ -40,7 +40,7 @@ export function Sidebar({ userName }: { userName: string }) {
     .toUpperCase();
 
   return (
-    <aside className="hidden w-56 shrink-0 flex-col border-r border-neutral-200/70 bg-white lg:flex">
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-neutral-200/70 bg-white lg:flex">
       <div className="flex items-center gap-2 px-5 py-5">
         <span className="flex h-7 w-7 items-center justify-center rounded-md bg-text-strong text-white">
           <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
@@ -52,7 +52,7 @@ export function Sidebar({ userName }: { userName: string }) {
             />
           </svg>
         </span>
-        <span className="text-[15px] font-semibold tracking-tight text-text-strong">
+        <span className="text-[28px] font-bold tracking-tight text-text-strong">
           VedaAI
         </span>
       </div>
@@ -61,10 +61,10 @@ export function Sidebar({ userName }: { userName: string }) {
         {NAV_ITEMS.map((item) => (
           <div
             key={item.label}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm ${
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-base ${
               item.active
                 ? "bg-surface-100 font-medium text-text-strong"
-                : "text-text-muted"
+                : "font-normal text-text-muted"
             }`}
           >
             <NavIcon path={item.path} />
@@ -78,10 +78,10 @@ export function Sidebar({ userName }: { userName: string }) {
           {initials}
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-xs font-medium text-text-strong">
+          <span className="block truncate text-sm font-medium text-text-strong">
             {userName}
           </span>
-          <span className="block text-[11px] text-text-faint">Candidate</span>
+          <span className="block text-xs text-text-faint">Candidate</span>
         </span>
       </div>
     </aside>

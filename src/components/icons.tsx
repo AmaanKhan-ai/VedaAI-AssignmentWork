@@ -81,6 +81,30 @@ export function IconArrowRight({ className = "" }: { className?: string }) {
   );
 }
 
+export function IconChevron({
+  className = "",
+  direction = "down",
+}: {
+  className?: string;
+  direction?: "up" | "down";
+}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path
+        d={direction === "down" ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function IconFile({ className = "" }: { className?: string }) {
   return (
     <svg

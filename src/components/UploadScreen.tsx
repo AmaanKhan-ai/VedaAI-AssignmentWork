@@ -65,8 +65,8 @@ function Dropzone({ label, file, onSelect, onError }: DropzoneProps) {
         {file ? <IconFile className="h-5 w-5" /> : <IconUpload className="h-5 w-5" />}
       </span>
       <div>
-        <p className="text-sm font-medium text-text-strong">{label}</p>
-        <p className="mt-1 max-w-[16ch] truncate text-xs text-text-faint">
+        <p className="text-[18px] font-bold text-text-strong lg:text-[20px] lg:font-semibold">{label}</p>
+        <p className="mt-1 max-w-[20ch] truncate text-xs text-text-muted lg:text-sm">
           {file ? file.name : `Max ${MAX_FILE_SIZE_MB}MB`}
         </p>
       </div>
@@ -77,13 +77,11 @@ function Dropzone({ label, file, onSelect, onError }: DropzoneProps) {
 function Mascot() {
   return (
     <svg viewBox="0 0 64 64" className="h-14 w-14">
-      <circle cx="32" cy="32" r="32" fill="var(--accent-tint)" />
-      <circle cx="32" cy="26" r="10" fill="var(--accent)" opacity="0.85" />
-      <path
-        d="M14 54c2-10 9-16 18-16s16 6 18 16"
-        fill="var(--accent)"
-        opacity="0.85"
-      />
+      <circle cx="32" cy="32" r="32" fill="var(--accent)" />
+      <circle cx="32" cy="26" r="10" fill="var(--accent)" />
+      <path d="M14 54c2-10 9-16 18-16s16 6 18 16" fill="var(--accent)" />
+      <circle cx="32" cy="32" r="19.5" fill="#ffffff" />
+      <circle cx="32" cy="26" r="7" fill="#000000" opacity="0.85" />
     </svg>
   );
 }
@@ -115,12 +113,13 @@ export function UploadScreen({
 
   return (
     <div className="flex min-h-full items-center justify-center px-6 py-12">
-      <div className="w-full max-w-xl rounded-2xl border border-border-default bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.08)] sm:p-10">
+      <div className="w-full max-w-3xl rounded-2xl border border-border-default bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.08)] sm:p-10">
         <div className="flex flex-col items-center text-center">
-          <h1 className="text-xl font-semibold text-text-strong sm:text-2xl">
-            Upload <span className="text-accent">Question Paper &amp; Answer Sheets</span>
+          <h1 className="text-2xl font-bold leading-tight text-[#2b2b2b] lg:text-[40px]">
+            Upload{" "}
+            <span className="lg:text-accent">Question Paper &amp; Answer Sheets</span>
           </h1>
-          <p className="mt-2 text-sm text-text-faint">
+          <p className="mt-2 hidden text-[20px] text-text-strong lg:block">
             Upload both files to get started
           </p>
 
@@ -171,7 +170,7 @@ export function UploadScreen({
           Start Mapping
           <IconArrowRight className="h-4 w-4" />
         </button>
-        <p className="mt-3 text-center text-xs text-text-faint">
+        <p className="mt-3 text-center text-sm text-text-muted">
           We&apos;ll extract questions and match handwritten answers automatically
         </p>
       </div>

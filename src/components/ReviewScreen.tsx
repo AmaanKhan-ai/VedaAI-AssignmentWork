@@ -12,6 +12,8 @@ const BAND_RIGHT = 980;
 const BAND_GAP_BEFORE_NEXT = 12;
 const BAND_TRAILING_PADDING = 25;
 
+const ZOOM_LEVELS = [1, 1.5, 2];
+
 interface FlatFragment {
   ownerIndex: number; // index into result.questions, or -1 for unmatched
   page: number;
@@ -55,6 +57,32 @@ function computeBands(
   return bands;
 }
 
+type ScoreTier = "good" | "partial" | "bad";
+
+function scoreTier(score: number, maxScore: number): ScoreTier {
+  if (maxScore <= 0 || score <= 0) return "bad";
+  const ratio = score / maxScore;
+  if (ratio >= 0.8) return "good";
+  return "partial";
+}
+
+const SCORE_BADGE_CLASSES: Record<ScoreTier, string> = {
+  good: "bg-score-good-bg text-white",
+  partial: "bg-score-partial-bg text-white",
+  bad: "bg-score-bad-bg text-score-bad-fg",
+};
+
+function ScoreBadge({ score, maxScore }: { score: number; maxScore: number }) {
+  const tier = scoreTier(score, maxScore);
+  return (
+    <span
+      className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-mono font-medium ${SCORE_BADGE_CLASSES[tier]}`}
+    >
+      {score}/{maxScore}
+    </span>
+  );
+}
+
 function StatusIcon({ q }: { q: MappedQuestion }) {
   if (q.status === "unanswered") return <IconDash className="h-5 w-5 shrink-0" />;
   if (q.grade) {
@@ -87,29 +115,21 @@ function QuestionRow({
       className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
         selected
           ? "border-accent/30 bg-accent-tint"
-          : "border-transparent hover:bg-neutral-50"
+          : "border-transparent hover:bg-surface-100"
       }`}
     >
       <StatusIcon q={q} />
       <span className="flex-1 min-w-0">
         <span
           className={`block text-xs font-mono ${
-            selected ? "text-accent" : "text-neutral-400"
+            selected ? "text-accent" : "text-text-faint"
           }`}
         >
           Q{q.number}
         </span>
-        <span className="block truncate text-sm text-neutral-800">{q.text}</span>
+        <span className="block truncate text-sm text-text-body">{q.text}</span>
       </span>
-      {q.grade && (
-        <span
-          className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-mono font-medium ${
-            q.grade.correct ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
-          }`}
-        >
-          {q.grade.score}/{q.grade.maxScore}
-        </span>
-      )}
+      {q.grade && <ScoreBadge score={q.grade.score} maxScore={q.grade.maxScore} />}
     </button>
   );
 }
@@ -141,6 +161,8 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
 
   const [currentPage, setCurrentPage] = useState(0);
   const [mobileTab, setMobileTab] = useState<"questions" | "answer">("questions");
+  const [zoomIndex, setZoomIndex] = useState(0);
+  const zoom = ZOOM_LEVELS[zoomIndex];
 
   function selectQuestion(index: number) {
     setSelectedIndex(index);
@@ -162,8 +184,8 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
   return (
     <div className="flex min-h-full flex-col">
       {result.summary && (
-        <div className="flex items-center justify-between border-b border-neutral-200/70 bg-white px-6 py-3">
-          <span className="text-sm text-neutral-500">
+        <div className="flex items-center justify-between border-b border-border-default bg-white px-6 py-3">
+          <span className="text-sm text-text-muted">
             {result.summary.answered} of {result.summary.totalQuestions} answered
             &middot; {result.summary.unanswered} unanswered
           </span>
@@ -174,21 +196,23 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
       )}
 
       {/* Mobile-only tab switcher — desktop shows both panels side by side */}
-      <div className="flex gap-1 border-b border-neutral-200/70 bg-white px-4 pt-3 lg:hidden">
-        {(["questions", "answer"] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setMobileTab(tab)}
-            className={`rounded-t-lg px-3 py-2 text-sm font-medium transition-colors ${
-              mobileTab === tab
-                ? "border-b-2 border-accent text-accent"
-                : "border-b-2 border-transparent text-neutral-400"
-            }`}
-          >
-            {tab === "questions" ? "Questions" : "Answer Sheet"}
-          </button>
-        ))}
+      <div className="border-b border-border-default bg-white px-4 py-3 lg:hidden">
+        <div className="inline-flex items-center gap-1 rounded-full bg-surface-300 p-1">
+          {(["questions", "answer"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setMobileTab(tab)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                mobileTab === tab
+                  ? "border border-[#7b7b7b] bg-text-strong text-white"
+                  : "border border-transparent text-text-muted"
+              }`}
+            >
+              {tab === "questions" ? "Questions" : "Answer Sheet"}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid flex-1 grid-cols-1 gap-0 lg:grid-cols-[360px_1fr]">
@@ -196,9 +220,9 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
         <div
           className={`${
             mobileTab === "questions" ? "block" : "hidden"
-          } border-b border-neutral-200/70 bg-white p-4 lg:block lg:border-b-0 lg:border-r`}
+          } border-b border-border-default bg-white p-4 lg:block lg:border-b-0 lg:border-r`}
         >
-          <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-neutral-400">
+          <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-text-faint">
             Questions
           </p>
           <div className="flex flex-col gap-1">
@@ -237,54 +261,101 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
           } flex-col gap-4 p-4 lg:flex`}
         >
           {selected && (
-            <div className="rounded-xl border border-neutral-200 bg-white p-4">
-              <div className="mb-1 text-xs font-mono text-neutral-400">
+            <div className="rounded-xl border border-border-default bg-white p-4">
+              <div className="mb-1 text-xs font-mono text-text-faint">
                 Q{selected.number}
               </div>
-              <p className="text-sm text-neutral-800">{selected.text}</p>
+              <p className="text-sm text-text-body">{selected.text}</p>
               {selected.grade && (
-                <p className="mt-3 rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
-                  <span className="font-medium text-neutral-900">
+                <p className="mt-3 rounded-lg bg-surface-100 px-3 py-2 text-sm text-text-muted">
+                  <span className="font-medium text-text-strong">
                     AI feedback:{" "}
                   </span>
                   {selected.grade.feedback}
                 </p>
               )}
               {selected.status === "unanswered" && (
-                <p className="mt-3 text-sm text-neutral-400">
+                <p className="mt-3 text-sm text-text-faint">
                   No answer found for this question.
                 </p>
               )}
             </div>
           )}
 
-          <div className="relative flex-1 overflow-hidden rounded-xl border border-neutral-200/70 bg-white">
-            {result.answerPages.length > 0 ? (
-              <div className="relative mx-auto w-full max-w-2xl">
-                <img
-                  src={result.answerPages[currentPage]}
-                  alt={`Answer sheet page ${currentPage + 1}`}
-                  className="w-full select-none"
-                  draggable={false}
-                />
-                {bandsOnPage.map((band, i) => (
-                  <div
-                    key={i}
-                    className="absolute rounded-sm border-2 border-emerald-500 bg-emerald-400/20 shadow-[0_0_0_2px_rgba(255,255,255,0.6)]"
-                    style={{
-                      left: `${BAND_LEFT / 10}%`,
-                      top: `${band.top / 10}%`,
-                      width: `${(BAND_RIGHT - BAND_LEFT) / 10}%`,
-                      height: `${(band.bottom - band.top) / 10}%`,
-                    }}
+          <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border-default bg-white">
+            <div className="flex items-center justify-between bg-text-strong px-4 py-2.5">
+              <span className="text-sm font-medium text-white">Answer Sheet</span>
+              <div className="flex items-center gap-3">
+                {result.answerPages.length > 1 && (
+                  <span className="text-xs text-white/70">
+                    Page {currentPage + 1} / {result.answerPages.length}
+                  </span>
+                )}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setZoomIndex((z) => Math.max(0, z - 1))}
+                    disabled={zoomIndex === 0}
+                    aria-label="Zoom out"
+                    className="flex h-6 w-6 items-center justify-center rounded text-white/80 hover:bg-white/10 disabled:opacity-30"
+                  >
+                    −
+                  </button>
+                  <span className="w-9 text-center text-xs text-white/80">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setZoomIndex((z) => Math.min(ZOOM_LEVELS.length - 1, z + 1))
+                    }
+                    disabled={zoomIndex === ZOOM_LEVELS.length - 1}
+                    aria-label="Zoom in"
+                    className="flex h-6 w-6 items-center justify-center rounded text-white/80 hover:bg-white/10 disabled:opacity-30"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative flex-1 overflow-auto bg-surface-100">
+              {result.answerPages.length > 0 ? (
+                <div
+                  className="relative mx-auto"
+                  style={{ width: `${zoom * 100}%`, maxWidth: zoom === 1 ? "42rem" : "none" }}
+                >
+                  <img
+                    src={result.answerPages[currentPage]}
+                    alt={`Answer sheet page ${currentPage + 1}`}
+                    className="w-full select-none"
+                    draggable={false}
                   />
-                ))}
-              </div>
-            ) : (
-              <div className="flex h-64 items-center justify-center text-sm text-neutral-400">
-                No answer sheet pages
-              </div>
-            )}
+                  {bandsOnPage.map((band, i) => (
+                    <div
+                      key={i}
+                      className="absolute rounded-sm border-2 border-highlight-stroke bg-highlight-fill/25"
+                      style={{
+                        left: `${BAND_LEFT / 10}%`,
+                        top: `${band.top / 10}%`,
+                        width: `${(BAND_RIGHT - BAND_LEFT) / 10}%`,
+                        height: `${(band.bottom - band.top) / 10}%`,
+                      }}
+                    >
+                      {i === 0 && selected && (
+                        <span className="absolute -top-2.5 left-1 rounded-sm bg-highlight-stroke px-1.5 py-0.5 text-[10px] font-mono font-bold text-white shadow-sm">
+                          Q{selected.number}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex h-64 items-center justify-center text-sm text-text-faint">
+                  No answer sheet pages
+                </div>
+              )}
+            </div>
           </div>
 
           {result.answerPages.length > 1 && (
@@ -298,7 +369,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
                       ? "bg-accent"
                       : fragmentPages.includes(i)
                       ? "bg-emerald-400"
-                      : "bg-neutral-300"
+                      : "bg-border-default"
                   }`}
                   aria-label={`Go to page ${i + 1}`}
                 />

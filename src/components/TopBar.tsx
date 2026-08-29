@@ -13,14 +13,14 @@ export function TopBar({ title, userName, onBack }: TopBarProps) {
     .toUpperCase();
 
   return (
-    <div className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-200/70 bg-white px-4 lg:px-6">
+    <div className="flex h-14 shrink-0 items-center justify-between border-b border-border-default bg-white px-4 lg:px-6">
       <div className="flex items-center gap-3">
         {onBack && (
           <button
             type="button"
             onClick={onBack}
             aria-label="Back"
-            className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-text-faint hover:bg-surface-100 hover:text-text-strong"
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
               <path
@@ -33,14 +33,14 @@ export function TopBar({ title, userName, onBack }: TopBarProps) {
             </svg>
           </button>
         )}
-        <span className="text-sm font-medium text-neutral-800">{title}</span>
+        <span className="text-sm font-medium text-text-strong">{title}</span>
       </div>
 
       <div className="flex items-center gap-2.5">
-        <span className="hidden text-sm text-neutral-600 sm:inline">
+        <span className="hidden text-sm text-text-muted sm:inline">
           {userName}
         </span>
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-900 text-[11px] font-semibold text-white">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-text-strong text-[11px] font-semibold text-white">
           {initials}
         </span>
       </div>

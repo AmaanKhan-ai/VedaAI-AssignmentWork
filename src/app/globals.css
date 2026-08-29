@@ -2,16 +2,59 @@
 
 :root {
   --background: #f6f3ee;
-  --foreground: #1c1c1e;
-  --accent: #f2603b;
+  --foreground: #2b2b2b;
+  --accent: #ff5623;
+  --accent-secondary: #ff9350;
   --accent-tint: #fde7de;
+
+  --text-strong: #303030;
+  --text-body: #2b2b2b;
+  --text-muted: #5e5e5e;
+  --text-faint: #a9a9a9;
+  --border-default: #cecece;
+
+  --surface-100: #f0f0f0;
+  --surface-200: #f3f3f3;
+  --surface-300: #f6f6f6;
+
+  --score-good-bg: #45b529;
+  --score-good-fg: #34ac15;
+  --score-partial-bg: #ff9900;
+  --score-partial-fg: #e3600f;
+  --score-bad-bg: #ffe9e2;
+  --score-bad-fg: #c0350a;
+
+  --highlight-fill: #5eff35;
+  --highlight-stroke: #3dd218;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-accent: var(--accent);
+  --color-accent-secondary: var(--accent-secondary);
   --color-accent-tint: var(--accent-tint);
+
+  --color-text-strong: var(--text-strong);
+  --color-text-body: var(--text-body);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-border-default: var(--border-default);
+
+  --color-surface-100: var(--surface-100);
+  --color-surface-200: var(--surface-200);
+  --color-surface-300: var(--surface-300);
+
+  --color-score-good-bg: var(--score-good-bg);
+  --color-score-good-fg: var(--score-good-fg);
+  --color-score-partial-bg: var(--score-partial-bg);
+  --color-score-partial-fg: var(--score-partial-fg);
+  --color-score-bad-bg: var(--score-bad-bg);
+  --color-score-bad-fg: var(--score-bad-fg);
+
+  --color-highlight-fill: var(--highlight-fill);
+  --color-highlight-stroke: var(--highlight-stroke);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

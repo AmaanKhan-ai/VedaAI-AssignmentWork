@@ -88,7 +88,7 @@ export default function Home() {
       <Sidebar userName={USER_NAME} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar
-          title="Assignments"
+          title="Exams"
           userName={USER_NAME}
           onBack={stage === "review" ? handleReset : undefined}
         />

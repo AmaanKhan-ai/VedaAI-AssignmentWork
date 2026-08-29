@@ -67,6 +67,20 @@ export function IconSparkle({ className = "" }: { className?: string }) {
   );
 }
 
+export function IconArrowRight({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M4 12h16M13 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconFile({ className = "" }: { className?: string }) {
   return (
     <svg

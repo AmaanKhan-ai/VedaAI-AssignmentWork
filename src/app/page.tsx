@@ -4,7 +4,7 @@ import { useState } from "react";
 import { UploadScreen } from "@/components/UploadScreen";
 import { ExtractingScreen } from "@/components/ExtractingScreen";
 import { ReviewScreen } from "@/components/ReviewScreen";
-import { Sidebar } from "@/components/Sidebar";
+import { Sidebar, MobileNavDrawer } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { fileToPageImages } from "@/lib/pdf";
 import type { ExtractionApiResponse, ExtractionResult } from "@/lib/types";
@@ -21,6 +21,7 @@ export default function Home() {
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [note, setNote] = useState<string | undefined>(undefined);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   async function handleContinue() {
     if (!questionFile || !answerFile) return;
@@ -86,11 +87,18 @@ export default function Home() {
   return (
     <div className="flex h-screen overflow-hidden lg:gap-3 lg:p-3">
       <Sidebar userName={USER_NAME} />
+      <MobileNavDrawer
+        userName={USER_NAME}
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+      />
       <div className="flex min-w-0 flex-1 flex-col lg:gap-3">
         <TopBar
           title="Exams"
           userName={USER_NAME}
           onBack={stage === "review" ? handleReset : undefined}
+          onMenuClick={() => setMobileNavOpen(true)}
+          onReset={handleReset}
         />
         <div className="flex-1 overflow-y-auto">
           {stage === "upload" && (

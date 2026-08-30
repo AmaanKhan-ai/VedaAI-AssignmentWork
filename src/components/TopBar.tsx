@@ -1,18 +1,41 @@
-import { IconArrowLeft, IconBell, IconMenu } from "./icons";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { IconArrowLeft, IconBell, IconChevron, IconMenu } from "./icons";
 
 interface TopBarProps {
   title: string;
   userName: string;
   onBack?: () => void;
+  onMenuClick?: () => void;
+  onReset?: () => void;
 }
 
-export function TopBar({ title, userName, onBack }: TopBarProps) {
+export function TopBar({ title, userName, onBack, onMenuClick, onReset }: TopBarProps) {
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
   const initials = userName
     .split(" ")
     .map((s) => s[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  // A `fixed inset-0` click-catcher would normally handle "click outside to
+  // close", but the bar above uses backdrop-blur — a backdrop-filter
+  // ancestor establishes its own containing block for fixed descendants,
+  // so that overlay would only ever cover the bar's own small box instead
+  // of the viewport. A document-level listener sidesteps that entirely.
+  useEffect(() => {
+    if (!profileOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [profileOpen]);
 
   return (
     <>
@@ -47,7 +70,8 @@ export function TopBar({ title, userName, onBack }: TopBarProps) {
           </span>
           <button
             type="button"
-            aria-label="Menu"
+            onClick={onMenuClick}
+            aria-label="Open menu"
             className="flex h-6 w-6 items-center justify-center text-text-strong"
           >
             <IconMenu className="h-5 w-5" />
@@ -81,11 +105,42 @@ export function TopBar({ title, userName, onBack }: TopBarProps) {
           <span className="text-base font-semibold text-text-faint">{title}</span>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <span className="text-base font-semibold text-text-strong">{userName}</span>
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-text-strong text-xs font-semibold text-white">
-            {initials}
-          </span>
+        <div ref={profileRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setProfileOpen((o) => !o)}
+            className="flex items-center gap-2.5 rounded-full py-1 pl-1 pr-2 hover:bg-surface-100"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-text-strong text-xs font-semibold text-white">
+              {initials}
+            </span>
+            <span className="text-base font-semibold text-text-strong">{userName}</span>
+            <IconChevron
+              direction={profileOpen ? "up" : "down"}
+              className="h-3.5 w-3.5 text-text-faint"
+            />
+          </button>
+
+          {profileOpen && (
+            <div className="absolute right-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-xl border border-border-default bg-white py-1.5 shadow-lg">
+              <div className="border-b border-border-default px-4 py-2.5">
+                <p className="truncate text-sm font-semibold text-text-strong">{userName}</p>
+                <p className="text-xs text-text-faint">Candidate</p>
+              </div>
+              {onReset && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    onReset();
+                  }}
+                  className="block w-full px-4 py-2 text-left text-sm text-text-strong hover:bg-surface-100"
+                >
+                  Start new assessment
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </>

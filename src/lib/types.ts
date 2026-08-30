@@ -14,6 +14,11 @@ export interface ExtractedQuestion {
 
 export interface ExtractedAnswerFragment {
   questionNumber: string | null; // the label visible on THIS fragment, or null if none is written on it
+  // Set ONLY when this fragment IS a section/set heading the student wrote
+  // (e.g. "Set-3:-"), for papers whose numbering restarts per section — see
+  // the comment above mapAnswersToQuestions() in matching.ts. Always null
+  // on a fragment that's actually part of an answer.
+  section: string | null;
   isStrayNote: boolean; // true ONLY if this is clearly not part of any exam answer (a personal reminder, doodle, crossed-out aside) — everything else, including sub-headings and unlabeled continuations, is false
   transcript: string;
   page: number; // index into answer sheet pages

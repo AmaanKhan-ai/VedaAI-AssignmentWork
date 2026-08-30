@@ -62,6 +62,7 @@ const QUESTION_SCHEMA = {
         type: Type.OBJECT,
         properties: {
           number: { type: Type.STRING },
+          section: { type: Type.STRING, nullable: true },
           text: { type: Type.STRING },
           page: { type: Type.INTEGER },
         },
@@ -81,6 +82,7 @@ const ANSWER_SCHEMA = {
         type: Type.OBJECT,
         properties: {
           questionNumber: { type: Type.STRING, nullable: true },
+          section: { type: Type.STRING, nullable: true },
           isStrayNote: { type: Type.BOOLEAN },
           transcript: { type: Type.STRING },
           page: { type: Type.INTEGER },
@@ -143,6 +145,7 @@ Rules:
 - If a question has labelled sub-parts (e.g. "11(a)", "11(b)", "2.i", "2.ii"), treat EACH sub-part as its own separate entry. Do not merge sub-parts into one entry.
 - Preserve the original numbering/label exactly as printed on the page (including whatever punctuation/format the paper uses).
 - Some papers print questions as a titled list (project briefs, prompts) with no visible number at all. In that case, "number" must still be a plain sequential number reflecting its position in the printed order — "1" for the first, "2" for the second, and so on. Never leave "number" blank — a student answering this paper will refer to each item by its position (1st, 2nd, 3rd...) even if the paper itself doesn't print a digit.
+- Some papers are organized into repeated sections that each restart their own numbering (e.g. "SET 1", "SET 2", "Section A", "Group I") — a common pattern where a student picks/answers only one such section, so the same numbers ("1", "2", "3"...) print more than once with completely different question text. If the paper has this structure, set "section" to that section's exact printed label (e.g. "SET 1") for every question inside it — this is essential, since identical numbers across different sections must stay distinguishable. If the paper is just one flat numbered list with no repeated sections, set "section" to null for every question.
 - "text" is the full question text (excluding the number label itself).
 - "page" is the 0-based index of the page image the question appears on.
 - Return questions in the same order they are printed, top to bottom, page by page.`,
@@ -157,15 +160,28 @@ Rules:
     },
   }));
 
-  const parsed = parseJson<{ questions: ExtractedQuestion[] }>(response.text);
-  // Safety net: a question with no usable number can never be matched (an
-  // empty/blank label normalizes to null and gets filtered out of the known
-  // set entirely), so fall back to its printed position rather than ever
-  // shipping a question nothing can attach an answer to.
-  return parsed.questions.map((q, i) => ({
-    ...q,
-    number: q.number?.trim() ? q.number : String(i + 1),
-  }));
+  const parsed = parseJson<
+    { questions: (ExtractedQuestion & { section?: string | null })[] }
+  >(response.text);
+  return parsed.questions.map((q, i) => {
+    // Safety net: a question with no usable number can never be matched (an
+    // empty/blank label normalizes to null and gets filtered out of the
+    // known set entirely), so fall back to its printed position rather than
+    // ever shipping a question nothing can attach an answer to.
+    const number = q.number?.trim() ? q.number : String(i + 1);
+    // Fold the section into the number itself (rather than a separate field)
+    // so a repeated-numbering paper ("SET 1" / "SET 2" / ... each printing
+    // "1", "2", "3"...) produces distinguishable labels downstream without
+    // touching the matching/UI code that only knows about a single label
+    // string. "·" is deliberately not a character normalizeLabel() strips,
+    // so "SET 1 · 3" and "SET 2 · 3" stay distinct matching keys.
+    const section = q.section?.trim();
+    return {
+      number: section ? `${section} · ${number}` : number,
+      text: q.text,
+      page: q.page,
+    };
+  });
 }
 
 export async function extractAnswers(
@@ -192,7 +208,8 @@ Rules:
 - Students may answer questions out of order — extract in the order they actually appear on the page, not assumed numeric order.
 - Do NOT invent an entry for a question the student never answered.
 - A long answer is usually written as several paragraphs, sub-headings, bullet lists, or examples in a row, but it's still ONE answer — the student typically writes the question number only once, at the very start. Every later segment of that same answer should have questionNumber: null and isStrayNote: false; the app links them back to the question in progress automatically, so you do not need to (and should not try to) repeat or guess the label.
-- If a single answer's handwriting continues onto another page/region, output a SEPARATE entry per region, in reading order, each with its own box.`,
+- If a single answer's handwriting continues onto another page/region, output a SEPARATE entry per region, in reading order, each with its own box.
+- If the question paper is organized into repeated sections that each restart their own numbering (e.g. "SET 1", "SET 2"), the student will usually mark which one they're answering by writing a heading like "Set-3:-", "SET 2", or "Attempting Set 4" as its own line, separate from any actual answer content. When a segment IS just such a heading (nothing else on it), output it as its own entry: "section" set to that label (e.g. "SET 3", matching the style the question paper itself uses), "questionNumber" null, "isStrayNote" false, and "transcript" the heading text itself. Do NOT try to also tag every later answer segment with the section — the app tracks which section is currently active for you from that heading alone. On every other segment (actual answer content), "section" must be null.`,
           },
           ...pageParts(pages),
         ],
@@ -207,9 +224,17 @@ Rules:
   const parsed = parseJson<{ answers: ExtractedAnswerFragment[] }>(
     response.text
   );
+  // Section propagation (which section is "currently active" across many
+  // segments) happens in matching.ts, not here — see the comment on
+  // mapAnswersToQuestions() for why that's a deterministic app-side state
+  // machine rather than something asked of the model repeatedly.
   return parsed.answers.map((a) => ({
-    ...a,
     questionNumber: a.questionNumber ?? null,
+    section: a.section ?? null,
+    isStrayNote: a.isStrayNote,
+    transcript: a.transcript,
+    page: a.page,
+    box: a.box,
   }));
 }
 

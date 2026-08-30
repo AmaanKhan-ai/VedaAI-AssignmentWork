@@ -67,6 +67,12 @@ function splitNumber(raw: string): { base: string; sub: string | null } {
   return { base: raw, sub: null };
 }
 
+// "Q11" reads fine; "QSET 3 · 1" (a section-qualified label) doesn't — only
+// prefix with "Q" when the label is a plain number-first style.
+function formatQuestionLabel(raw: string): string {
+  return /^\d/.test(raw.trim()) ? `Q${raw}` : raw;
+}
+
 type ScoreTier = "good" | "partial" | "bad";
 
 function scoreTier(score: number, maxScore: number): ScoreTier {
@@ -144,9 +150,9 @@ function QuestionAccordionRow({
       >
         <span className="flex shrink-0 items-center gap-1.5">
           <span
-            className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-[20px] font-extrabold text-white ${
-              active ? "bg-accent" : "bg-[#2b2b2b]"
-            }`}
+            className={`flex h-8 min-w-8 items-center justify-center rounded-full border-2 border-white px-1.5 font-extrabold text-white ${
+              base.length > 2 ? "text-xs" : "text-[20px]"
+            } ${active ? "bg-accent" : "bg-[#2b2b2b]"}`}
           >
             {base}
           </span>
@@ -468,7 +474,7 @@ export function ReviewScreen({ result }: { result: ExtractionResult }) {
                           >
                             {i === 0 && active && (
                               <span className="absolute -top-7 left-2 rounded-sm bg-score-good-fg px-2 py-1 text-base font-bold text-white shadow-sm">
-                                Q{active.number}
+                                {formatQuestionLabel(active.number)}
                               </span>
                             )}
                           </div>

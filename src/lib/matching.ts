@@ -68,6 +68,21 @@ function looksLikeSubHeading(transcript: string): boolean {
   );
 }
 
+// Some question papers restart their numbering per repeated section (e.g.
+// "SET 1" through "SET 4", each printing its own "1"-"5" — extractQuestions
+// folds that into the question's own number, "SET 1 · 1" etc, so those
+// don't collide). A student only answers one section, marking it with a
+// handwritten heading ("Set-3:-") before their answers — but they only
+// write that heading ONCE, not before every question number under it.
+// Rather than ask the model to remember and repeat "SET 3" on every one of
+// potentially many segments that follow (the same kind of cross-segment
+// memory task that proved unreliable for answer continuation, per
+// looksLikeSubHeading's comment above), the model is only asked the
+// narrower, single-segment question "is this fragment itself a section
+// heading" (ExtractedAnswerFragment.section). This function tracks which
+// section is currently active the same deterministic way it already
+// tracks which question is currently in progress (currentKey below), and
+// qualifies subsequent bare labels with it before matching.
 export function mapAnswersToQuestions(
   questions: ExtractedQuestion[],
   answers: ExtractedAnswerFragment[]
@@ -83,9 +98,23 @@ export function mapAnswersToQuestions(
 
   const ordered = [...answers].sort(sortReadingOrder);
   let currentKey: string | null = null;
+  let currentSection: string | null = null;
 
   for (const answer of ordered) {
-    const rawKey = normalizeLabel(answer.questionNumber);
+    if (answer.section) {
+      // A section heading, not an answer to anything itself. A new section
+      // starting also means whatever question was "in progress" is over —
+      // its next segment can't be a silent continuation across a section
+      // boundary the student explicitly marked.
+      currentSection = answer.section;
+      currentKey = null;
+      continue;
+    }
+
+    const rawLabel = answer.questionNumber?.trim() || null;
+    const qualifiedLabel =
+      rawLabel && currentSection ? `${currentSection} · ${rawLabel}` : rawLabel;
+    const rawKey = normalizeLabel(qualifiedLabel);
 
     if (rawKey && knownKeys.has(rawKey)) {
       // Explicit, recognized label — start (or continue) this question.

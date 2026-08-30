@@ -91,6 +91,20 @@ async function rasterizeImage(file: File): Promise<Blob[]> {
   return [await canvasToJpegBlob(canvas)];
 }
 
+// Cheap page count for the upload-screen file preview — reads the PDF's
+// structure only, without rendering any page, so it's fast enough to run
+// immediately on file selection rather than waiting for the full
+// rasterization fileToPageImages() does later.
+export async function getPageCount(file: File): Promise<number> {
+  if (file.type === "application/pdf") {
+    const pdfjs = await loadPdfJs();
+    const buffer = await file.arrayBuffer();
+    const doc = await pdfjs.getDocument({ data: buffer }).promise;
+    return doc.numPages;
+  }
+  return 1;
+}
+
 // Returns one JPEG Blob per page (PDFs yield one per page; images yield one).
 export async function fileToPageImages(file: File): Promise<Blob[]> {
   if (file.type === "application/pdf") {

@@ -80,10 +80,6 @@ export default function Home() {
     setErrorMessage(null);
   }
 
-  if (stage === "extracting") {
-    return <ExtractingScreen note={note} />;
-  }
-
   return (
     <div className="flex h-screen overflow-hidden lg:gap-3 lg:p-3">
       <Sidebar userName={USER_NAME} />
@@ -107,12 +103,15 @@ export default function Home() {
               answerFile={answerFile}
               onQuestionFile={setQuestionFile}
               onAnswerFile={setAnswerFile}
+              onRemoveQuestionFile={() => setQuestionFile(null)}
+              onRemoveAnswerFile={() => setAnswerFile(null)}
               onContinue={handleContinue}
               gradeEnabled={gradeEnabled}
               onGradeEnabledChange={setGradeEnabled}
               errorMessage={errorMessage}
             />
           )}
+          {stage === "extracting" && <ExtractingScreen note={note} />}
           {stage === "review" && result && <ReviewScreen result={result} />}
         </div>
       </div>

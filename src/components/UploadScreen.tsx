@@ -1,18 +1,24 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { IconArrowRight, IconFile, IconUpload } from "./icons";
+import { useEffect, useRef, useState } from "react";
+import { getPageCount } from "@/lib/pdf";
+import { IconArrowRight, IconFile, IconUpload, IconX } from "./icons";
 
 const MAX_FILE_SIZE_MB = 10;
 
+function formatFileSize(bytes: number): string {
+  return bytes < 1024 * 1024
+    ? `${Math.max(1, Math.round(bytes / 1024))}KB`
+    : `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
 interface DropzoneProps {
   label: string;
-  file: File | null;
   onSelect: (file: File) => void;
   onError: (message: string) => void;
 }
 
-function Dropzone({ label, file, onSelect, onError }: DropzoneProps) {
+function Dropzone({ label, onSelect, onError }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -42,8 +48,6 @@ function Dropzone({ label, file, onSelect, onError }: DropzoneProps) {
       className={`flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border px-6 py-9 text-center transition-colors ${
         dragging
           ? "border-accent bg-accent-tint/40"
-          : file
-          ? "border-emerald-300 bg-emerald-50/50"
           : "border-border-default bg-white hover:border-text-faint"
       }`}
     >
@@ -57,32 +61,56 @@ function Dropzone({ label, file, onSelect, onError }: DropzoneProps) {
           if (f) handleFile(f);
         }}
       />
-      <span
-        className={`flex h-10 w-10 items-center justify-center rounded-lg lg:h-12 lg:w-12 ${
-          file ? "bg-emerald-100 text-emerald-600" : "bg-surface-200 text-text-strong"
-        }`}
-      >
-        {file ? <IconFile className="h-5 w-5" /> : <IconUpload className="h-5 w-5" />}
+      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-200 text-text-strong lg:h-12 lg:w-12">
+        <IconUpload className="h-5 w-5" />
       </span>
       <div>
         <p className="text-[18px] font-bold text-text-strong lg:text-[20px] lg:font-semibold">{label}</p>
-        <p className="mt-1 max-w-[20ch] truncate text-xs text-text-muted lg:text-sm">
-          {file ? file.name : `Max ${MAX_FILE_SIZE_MB}MB`}
-        </p>
+        <p className="mt-1 text-xs text-text-muted lg:text-sm">Max {MAX_FILE_SIZE_MB}MB</p>
       </div>
     </button>
   );
 }
 
-function Mascot() {
+function SelectedFilePreview({ file, onRemove }: { file: File; onRemove: () => void }) {
+  const [pageCount, setPageCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPageCount(null);
+    getPageCount(file)
+      .then((n) => {
+        if (!cancelled) setPageCount(n);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [file]);
+
   return (
-    <svg viewBox="0 0 64 64" className="h-14 w-14">
-      <circle cx="32" cy="32" r="32" fill="var(--accent)" />
-      <circle cx="32" cy="26" r="10" fill="var(--accent)" />
-      <path d="M14 54c2-10 9-16 18-16s16 6 18 16" fill="var(--accent)" />
-      <circle cx="32" cy="32" r="19.5" fill="#ffffff" />
-      <circle cx="32" cy="26" r="7" fill="#000000" opacity="0.85" />
-    </svg>
+    <div className="relative flex flex-1 items-center rounded-xl border border-border-default bg-white p-4">
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${file.name}`}
+        className="absolute -right-2.5 -top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-[#2b2b2b] text-white shadow-md hover:bg-black"
+      >
+        <IconX className="h-3.5 w-3.5" />
+      </button>
+      <div className="flex w-full items-center gap-3 rounded-xl bg-surface-300 p-3">
+        <span className="flex h-10 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-accent">
+          <IconFile className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 text-left">
+          <p className="truncate text-base font-bold text-[#2b2b2b]">{file.name}</p>
+          <p className="text-sm text-text-muted">
+            {formatFileSize(file.size)}
+            {pageCount != null && ` · ${pageCount} ${pageCount === 1 ? "Page" : "Pages"}`}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -91,6 +119,8 @@ interface UploadScreenProps {
   answerFile: File | null;
   onQuestionFile: (f: File) => void;
   onAnswerFile: (f: File) => void;
+  onRemoveQuestionFile: () => void;
+  onRemoveAnswerFile: () => void;
   onContinue: () => void;
   gradeEnabled: boolean;
   onGradeEnabledChange: (v: boolean) => void;
@@ -102,6 +132,8 @@ export function UploadScreen({
   answerFile,
   onQuestionFile,
   onAnswerFile,
+  onRemoveQuestionFile,
+  onRemoveAnswerFile,
   onContinue,
   gradeEnabled,
   onGradeEnabledChange,
@@ -113,7 +145,7 @@ export function UploadScreen({
 
   return (
     <div className="flex min-h-full items-center justify-center px-6 py-12">
-      <div className="w-full max-w-3xl rounded-2xl border border-border-default bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.08)] sm:p-10">
+      <div className="w-full max-w-3xl rounded-2xl bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-16px_rgba(0,0,0,0.08)] sm:p-10">
         <div className="flex flex-col items-center text-center">
           <h1 className="text-2xl font-bold leading-tight text-[#2b2b2b] lg:text-[40px]">
             Upload{" "}
@@ -124,23 +156,34 @@ export function UploadScreen({
           </p>
 
           <div className="mt-6">
-            <Mascot />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/mascot.png"
+              alt=""
+              className="h-[110px] w-[110px] lg:h-[138px] lg:w-[137px]"
+            />
           </div>
         </div>
 
         <div className="mt-8 flex w-full flex-col gap-4 sm:flex-row">
-          <Dropzone
-            label="Upload Question Paper"
-            file={questionFile}
-            onSelect={onQuestionFile}
-            onError={setLocalError}
-          />
-          <Dropzone
-            label="Upload Answer Sheet"
-            file={answerFile}
-            onSelect={onAnswerFile}
-            onError={setLocalError}
-          />
+          {questionFile ? (
+            <SelectedFilePreview file={questionFile} onRemove={onRemoveQuestionFile} />
+          ) : (
+            <Dropzone
+              label="Upload Question Paper"
+              onSelect={onQuestionFile}
+              onError={setLocalError}
+            />
+          )}
+          {answerFile ? (
+            <SelectedFilePreview file={answerFile} onRemove={onRemoveAnswerFile} />
+          ) : (
+            <Dropzone
+              label="Upload Answer Sheet"
+              onSelect={onAnswerFile}
+              onError={setLocalError}
+            />
+          )}
         </div>
 
         <label className="mt-6 flex items-center justify-center gap-2 text-sm text-text-muted">

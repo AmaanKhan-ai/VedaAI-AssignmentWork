@@ -51,6 +51,24 @@ function Logo() {
   );
 }
 
+function ToolkitButton() {
+  return (
+    <div className="px-3 pb-3">
+      {/* border-image ignores border-radius, so the gradient stroke is
+          approximated with a solid mid-gradient color instead. */}
+      <button
+        type="button"
+        className="flex w-full items-center justify-center gap-2 rounded-full border-2 border-[#d94a1e] bg-[#272727] px-4 py-2.5 text-sm font-medium text-white shadow-sm"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+          <path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2z" />
+        </svg>
+        AI Teacher&rsquo;s Toolkit
+      </button>
+    </div>
+  );
+}
+
 function NavList() {
   return (
     <nav className="flex flex-1 flex-col gap-0.5 px-3">
@@ -96,6 +114,7 @@ export function Sidebar({ userName }: { userName: string }) {
   return (
     <aside className="hidden w-64 shrink-0 flex-col bg-white lg:flex lg:rounded-2xl lg:shadow-[0_32px_48px_0_rgba(0,0,0,0.2),0_16px_48px_0_rgba(0,0,0,0.12)]">
       <Logo />
+      <ToolkitButton />
       <NavList />
       <ProfileCard userName={userName} />
     </aside>
